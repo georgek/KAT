@@ -61,9 +61,18 @@ class MainWindow(QtGui.QMainWindow):
             sliders_grid.addWidget(label, 0, col)
             sliders_grid.addWidget(sld,   1, col)
 
-        add_slider("x", self.update_xmax, args.x_max, matrix.shape[1], 0)
-        add_slider("y", self.update_ymax, args.y_max, matrix.shape[0], 1)
-        add_slider("z", self.update_zmax, args.z_max, np.max(matrix), 2)
+        add_slider("x", self.setXmax,
+                   args.x_max,
+                   matrix.shape[1],
+                   0)
+        add_slider("y", self.setYmax,
+                   args.y_max,
+                   matrix.shape[0],
+                   1)
+        add_slider("z", self.setZmax,
+                   args.z_max,
+                   max((np.percentile(matrix, 99)+1)*5, args.z_max*2),
+                   2)
 
         dock.setWidget(sliders)
 
@@ -87,13 +96,13 @@ class MainWindow(QtGui.QMainWindow):
             make_figure(self.figure, self.matrix, self.header, self.args)
             self.canvas.draw()
 
-    def update_xmax(self,v):
+    def setXmax(self,v):
         self.args.x_max = v
 
-    def update_ymax(self,v):
+    def setYmax(self,v):
         self.args.y_max = v
 
-    def update_zmax(self,v):
+    def setZmax(self,v):
         self.args.z_max = v
 
 
