@@ -106,6 +106,34 @@ class MainWindow(QtGui.QMainWindow):
 
         axisdock.setWidget(sliders)
 
+        outputdock = QtGui.QDockWidget("Output")
+        outputdock.setAutoFillBackground(True)
+        palette = outputdock.palette()
+        palette.setColor(outputdock.backgroundRole(), QtCore.Qt.white)
+        outputdock.setPalette(palette)
+        self.addDockWidget(QtCore.Qt.RightDockWidgetArea, outputdock)
+
+        outputopts = QtGui.QWidget()
+        # outputopts.setSizePolicy(QtGui.QSizePolicy(QtGui.QSizePolicy.Minimum,
+        #                                            QtGui.QSizePolicy.Minimum))
+        outputopts_grid = QtGui.QGridLayout(outputopts)
+
+        def add_text_input(lab, fun, init, row):
+            label = QtGui.QLabel(lab, outputopts)
+            textbox = QtGui.QLineEdit(outputopts)
+            textbox.setText(str(init))
+            outputopts_grid.addWidget(label,   row, 0, 1, 1)
+            outputopts_grid.addWidget(textbox, row, 1, 1, 1)
+
+        add_text_input("Width", lambda x: None, args.width, 0)
+        add_text_input("Height", lambda x: None, args.height, 1)
+        add_text_input("DPI", lambda x: None, args.dpi, 2)
+        savebutton = QtGui.QPushButton("&Save as...")
+        savebutton.clicked.connect(self.saveAs)
+        outputopts_grid.addWidget(savebutton, 3, 0, 1, 2)
+
+        outputdock.setWidget(outputopts)
+
         self.drawthread.start()
         self.redraw()
 
@@ -114,6 +142,12 @@ class MainWindow(QtGui.QMainWindow):
         self.end_event.set()
         self.redraw()
         super().closeEvent(event)
+
+
+    def saveAs(self):
+        filename = QtGui.QFileDialog.getSaveFileName(self)
+        logging.info("Filename given: %s", filename)
+
 
     def redraw(self):
         self.redraw_event.set()
