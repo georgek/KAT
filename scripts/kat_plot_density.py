@@ -3,6 +3,10 @@
 import sys
 import argparse
 import threading
+import logging
+import functools
+
+logging.basicConfig(level=logging.DEBUG)
 
 import numpy as np
 import scipy.ndimage as ndimage
@@ -16,6 +20,21 @@ import kat_plot_colormaps as cmaps
 from kat_plot_misc import *
 
 from PyQt4 import QtCore, QtGui
+
+
+def onlyInt(fun):
+    """Only runs the function if the last argument can be coerced into an int,
+otherwise does nothing.
+    """
+    @functools.wraps(fun)
+    def wrapper(*args):
+        try:
+            v = int(args[-1])
+        except ValueError:
+            return
+        fun(*args[:-1], v)
+    return wrapper
+
 
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, figure, matrix, header, args):
@@ -36,17 +55,27 @@ class MainWindow(QtGui.QMainWindow):
         self.drawthread = threading.Thread(target=self.async_redraw,
                                            args=(self.redraw_event, self.end_event))
 
-        dock = QtGui.QDockWidget("Axis limits")
-        dock.setAutoFillBackground(True)
-        palette = dock.palette()
-        palette.setColor(dock.backgroundRole(), QtCore.Qt.white)
-        dock.setPalette(palette)
-        self.addDockWidget(QtCore.Qt.RightDockWidgetArea, dock)
+        axisdock = QtGui.QDockWidget("Axis limits")
+        axisdock.setAutoFillBackground(True)
+        palette = axisdock.palette()
+        palette.setColor(axisdock.backgroundRole(), QtCore.Qt.white)
+        axisdock.setPalette(palette)
+        self.addDockWidget(QtCore.Qt.RightDockWidgetArea, axisdock)
 
         sliders = QtGui.QWidget()
+        # sliders.setSizePolicy(QtGui.QSizePolicy(QtGui.QSizePolicy.Minimum,
+        #                                         QtGui.QSizePolicy.Expanding))
         sliders_grid = QtGui.QGridLayout(sliders)
 
         def add_slider(lab, fun, init, maximum, col):
+            logging.debug("add_slider: %s", locals())
+            label = QtGui.QLabel(lab, sliders)
+            label.setAlignment(QtCore.Qt.AlignCenter)
+            textbox = QtGui.QLineEdit(sliders)
+            textbox.setText(str(init))
+            # let the user type a higher number as this will be corrected by
+            # the slider
+            textbox.setValidator(QtGui.QIntValidator(1, maximum*10))
             sld = QtGui.QSlider(QtCore.Qt.Vertical, sliders)
             sld.setMinimum(1)
             sld.setMaximum(maximum)
@@ -54,12 +83,13 @@ class MainWindow(QtGui.QMainWindow):
             sld.setTickInterval(maximum/10)
             sld.setTickPosition(QtGui.QSlider.TicksRight)
             sld.setFocusPolicy(QtCore.Qt.NoFocus)
+            textbox.textChanged[str].connect(functools.partial(self.updateSlider, sld))
             sld.valueChanged[int].connect(fun)
+            sld.valueChanged[int].connect(functools.partial(self.updateTextBox, textbox))
             sld.valueChanged.connect(self.redraw)
-            label = QtGui.QLabel(lab, sliders)
-            label.setAlignment(QtCore.Qt.AlignCenter)
-            sliders_grid.addWidget(label, 0, col)
-            sliders_grid.addWidget(sld,   1, col)
+            sliders_grid.addWidget(label,   0, col)
+            sliders_grid.addWidget(textbox, 1, col)
+            sliders_grid.addWidget(sld,     2, col)
 
         add_slider("x", self.setXmax,
                    args.x_max,
@@ -71,10 +101,10 @@ class MainWindow(QtGui.QMainWindow):
                    1)
         add_slider("z", self.setZmax,
                    args.z_max,
-                   max((np.percentile(matrix, 99)+1)*5, args.z_max*2),
+                   int(max((np.percentile(matrix, 99)+1)*5, args.z_max*2)),
                    2)
 
-        dock.setWidget(sliders)
+        axisdock.setWidget(sliders)
 
         make_figure(self.figure, self.matrix, self.header, self.args)
         self.drawthread.start()
@@ -87,6 +117,7 @@ class MainWindow(QtGui.QMainWindow):
     def redraw(self):
         self.redraw_event.set()
 
+
     def async_redraw(self, redraw_event, end_event):
         while True:
             redraw_event.wait()
@@ -96,12 +127,27 @@ class MainWindow(QtGui.QMainWindow):
             make_figure(self.figure, self.matrix, self.header, self.args)
             self.canvas.draw()
 
+
+    def updateTextBox(self,textBox,val):
+        textBox.setText(str(val))
+
+
+    @onlyInt
+    def updateSlider(self,slider,val):
+        slider.setSliderPosition(val)
+
+
+    @onlyInt
     def setXmax(self,v):
         self.args.x_max = v
 
+
+    @onlyInt
     def setYmax(self,v):
         self.args.y_max = v
 
+
+    @onlyInt
     def setZmax(self,v):
         self.args.z_max = v
 
@@ -181,7 +227,7 @@ def find_peaks(matrix):
             ymax = i
             break
 
-    zmax = np.max(peakz) * 1.1
+    zmax = int(np.max(peakz) * 1.1)
 
     return xmax,ymax,zmax
 
@@ -283,6 +329,7 @@ def main(args):
         main = MainWindow(figure,matrix,header,args)
         main.show()
         sys.exit(app.exec_())
+
 
 if __name__ == '__main__':
     args = get_args()
