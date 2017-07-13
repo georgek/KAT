@@ -106,8 +106,9 @@ class MainWindow(QtGui.QMainWindow):
 
         axisdock.setWidget(sliders)
 
-        make_figure(self.figure, self.matrix, self.header, self.args)
         self.drawthread.start()
+        self.redraw()
+
 
     def closeEvent(self, event):
         self.end_event.set()
