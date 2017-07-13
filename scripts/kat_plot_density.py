@@ -64,6 +64,8 @@ class MainWindow(QtGui.QMainWindow):
         self.drawthread = threading.Thread(target=self.async_redraw,
                                            args=(self.redraw_event, self.end_event))
 
+        self.dockwidth = 2
+
         logging.info("screen dpi: %s, %s",
                      self.logicalDpiX(),
                      self.logicalDpiY())
@@ -91,7 +93,7 @@ class MainWindow(QtGui.QMainWindow):
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, axisdock)
 
         sliders = QtGui.QWidget()
-        sliders.setFixedWidth(self.xPxDim(1.75))
+        sliders.setFixedWidth(self.xPxDim(self.dockwidth))
         sliders.setFixedHeight(self.yPxDim(2))
         sliders_grid = QtGui.QGridLayout(sliders)
 
@@ -102,7 +104,6 @@ class MainWindow(QtGui.QMainWindow):
             textbox = QtGui.QLineEdit(sliders)
             textbox.setText(str(init))
             textbox.setCursorPosition(0)
-            textbox.setFocusPolicy(QtCore.Qt.NoFocus)
             # let the user type a higher number as this will be corrected by
             # the slider
             textbox.setValidator(QtGui.QIntValidator(1, maximum*10))
@@ -147,7 +148,7 @@ class MainWindow(QtGui.QMainWindow):
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, labelsdock)
 
         labelsopts = QtGui.QWidget()
-        labelsopts.setFixedWidth(self.xPxDim(1.75))
+        labelsopts.setFixedWidth(self.xPxDim(self.dockwidth))
         labelsopts.setFixedHeight(self.yPxDim(1.5))
         labelsopts_grid = QtGui.QGridLayout(labelsopts)
 
@@ -156,14 +157,15 @@ class MainWindow(QtGui.QMainWindow):
             textbox = QtGui.QLineEdit(labelsopts)
             textbox.setText(str(init))
             textbox.setCursorPosition(0)
-            textbox.setFocusPolicy(QtCore.Qt.NoFocus)
+            textbox.textChanged[str].connect(fun)
+            textbox.textChanged.connect(self.redraw)
             labelsopts_grid.addWidget(label,   row, 0, 1, 1)
             labelsopts_grid.addWidget(textbox, row, 1, 1, 1)
 
-        add_text_input("Title", lambda x: None, self.args.title,   0)
-        add_text_input("X",     lambda x: None, self.args.x_label, 1)
-        add_text_input("Y",     lambda x: None, self.args.y_label, 2)
-        add_text_input("Z",     lambda x: None, self.args.z_label, 3)
+        add_text_input("Title", self.setTitle,  self.args.title,   0)
+        add_text_input("X",     self.setXLabel, self.args.x_label, 1)
+        add_text_input("Y",     self.setYLabel, self.args.y_label, 2)
+        add_text_input("Z",     self.setZLabel, self.args.z_label, 3)
 
         labelsdock.setWidget(labelsopts)
 
@@ -177,25 +179,26 @@ class MainWindow(QtGui.QMainWindow):
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, outputdock)
 
         outputopts = QtGui.QWidget()
-        outputopts.setFixedWidth(self.xPxDim(1.75))
+        outputopts.setFixedWidth(self.xPxDim(self.dockwidth))
         outputopts.setFixedHeight(self.yPxDim(1.5))
         outputopts_grid = QtGui.QGridLayout(outputopts)
 
-        def add_text_input(lab, fun, init, row):
+        def add_text_input(lab, unit, fun, init, row):
             label = QtGui.QLabel(lab, outputopts)
+            unit = QtGui.QLabel(unit, outputopts)
             textbox = QtGui.QLineEdit(outputopts)
             textbox.setText(str(init))
             textbox.setCursorPosition(0)
-            textbox.setFocusPolicy(QtCore.Qt.NoFocus)
             outputopts_grid.addWidget(label,   row, 0, 1, 1)
             outputopts_grid.addWidget(textbox, row, 1, 1, 1)
+            outputopts_grid.addWidget(unit,    row, 2, 1, 1)
 
-        add_text_input("Width",  lambda x: None, self.args.width,  0)
-        add_text_input("Height", lambda x: None, self.args.height, 1)
-        add_text_input("DPI",    lambda x: None, self.args.dpi,    2)
+        add_text_input("Width",      "cm", lambda x: None, self.args.width,  0)
+        add_text_input("Height",     "cm", lambda x: None, self.args.height, 1)
+        add_text_input("Resolution", "dpi",lambda x: None, self.args.dpi,    2)
         savebutton = QtGui.QPushButton("&Save as...")
         savebutton.clicked.connect(self.saveAs)
-        outputopts_grid.addWidget(savebutton, 3, 0, 1, 2)
+        outputopts_grid.addWidget(savebutton, 3, 0, 1, 3)
 
         outputdock.setWidget(outputopts)
 
@@ -217,6 +220,22 @@ class MainWindow(QtGui.QMainWindow):
             self.figure.clear()
             make_figure(self.figure, self.matrix, self.header, self.args)
             self.canvas.draw()
+
+
+    def setTitle(self,v):
+        self.args.title = str(v)
+
+
+    def setXLabel(self,v):
+        self.args.x_label = str(v)
+
+
+    def setYLabel(self,v):
+        self.args.y_label = str(v)
+
+
+    def setZLabel(self,v):
+        self.args.z_label = str(v)
 
 
     @onlyInt
