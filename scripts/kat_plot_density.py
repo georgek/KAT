@@ -6,7 +6,7 @@ import threading
 import logging
 import functools
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 import numpy as np
 import scipy.ndimage as ndimage
@@ -36,6 +36,15 @@ otherwise does nothing.
     return wrapper
 
 
+def updateTextBox(textBox,val):
+    textBox.setText(str(val))
+
+
+@onlyInt
+def updateSlider(slider,val):
+    slider.setSliderPosition(val)
+
+
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, figure, matrix, header, args):
         super().__init__()
@@ -55,6 +64,25 @@ class MainWindow(QtGui.QMainWindow):
         self.drawthread = threading.Thread(target=self.async_redraw,
                                            args=(self.redraw_event, self.end_event))
 
+        logging.info("screen dpi: %s, %s",
+                     self.logicalDpiX(),
+                     self.logicalDpiY())
+
+        self.makeAxisDock()
+        self.makeLabelsDock()
+        self.makeOutputDock()
+
+        self.drawthread.start()
+        self.redraw()
+
+
+    def closeEvent(self, event):
+        self.end_event.set()
+        self.redraw()
+        super().closeEvent(event)
+
+
+    def makeAxisDock(self):
         axisdock = QtGui.QDockWidget("Axis limits")
         axisdock.setAutoFillBackground(True)
         palette = axisdock.palette()
@@ -63,8 +91,8 @@ class MainWindow(QtGui.QMainWindow):
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, axisdock)
 
         sliders = QtGui.QWidget()
-        # sliders.setSizePolicy(QtGui.QSizePolicy(QtGui.QSizePolicy.Minimum,
-        #                                         QtGui.QSizePolicy.Expanding))
+        sliders.setFixedWidth(self.xPxDim(1.75))
+        sliders.setFixedHeight(self.yPxDim(2))
         sliders_grid = QtGui.QGridLayout(sliders)
 
         def add_slider(lab, fun, init, maximum, col):
@@ -73,6 +101,8 @@ class MainWindow(QtGui.QMainWindow):
             label.setAlignment(QtCore.Qt.AlignCenter)
             textbox = QtGui.QLineEdit(sliders)
             textbox.setText(str(init))
+            textbox.setCursorPosition(0)
+            textbox.setFocusPolicy(QtCore.Qt.NoFocus)
             # let the user type a higher number as this will be corrected by
             # the slider
             textbox.setValidator(QtGui.QIntValidator(1, maximum*10))
@@ -83,29 +113,62 @@ class MainWindow(QtGui.QMainWindow):
             sld.setTickInterval(maximum/10)
             sld.setTickPosition(QtGui.QSlider.TicksRight)
             sld.setFocusPolicy(QtCore.Qt.NoFocus)
-            textbox.textChanged[str].connect(functools.partial(self.updateSlider, sld))
+            textbox.textChanged[str].connect(functools.partial(updateSlider, sld))
             sld.valueChanged[int].connect(fun)
-            sld.valueChanged[int].connect(functools.partial(self.updateTextBox, textbox))
+            sld.valueChanged[int].connect(functools.partial(updateTextBox, textbox))
             sld.valueChanged.connect(self.redraw)
             sliders_grid.addWidget(label,   0, col)
             sliders_grid.addWidget(textbox, 1, col)
             sliders_grid.addWidget(sld,     2, col)
 
         add_slider("x", self.setXmax,
-                   args.x_max,
-                   matrix.shape[1],
+                   self.args.x_max,
+                   self.matrix.shape[1],
                    0)
         add_slider("y", self.setYmax,
-                   args.y_max,
-                   matrix.shape[0],
+                   self.args.y_max,
+                   self.matrix.shape[0],
                    1)
         add_slider("z", self.setZmax,
-                   args.z_max,
-                   int(max((np.percentile(matrix, 99)+1)*5, args.z_max*2)),
+                   self.args.z_max,
+                   int(max((np.percentile(self.matrix, 99)+1)*5,
+                           self.args.z_max*2)),
                    2)
 
         axisdock.setWidget(sliders)
 
+
+    def makeLabelsDock(self):
+        labelsdock = QtGui.QDockWidget("Labels")
+        labelsdock.setAutoFillBackground(True)
+        palette = labelsdock.palette()
+        palette.setColor(labelsdock.backgroundRole(), QtCore.Qt.white)
+        labelsdock.setPalette(palette)
+        self.addDockWidget(QtCore.Qt.RightDockWidgetArea, labelsdock)
+
+        labelsopts = QtGui.QWidget()
+        labelsopts.setFixedWidth(self.xPxDim(1.75))
+        labelsopts.setFixedHeight(self.yPxDim(1.5))
+        labelsopts_grid = QtGui.QGridLayout(labelsopts)
+
+        def add_text_input(lab, fun, init, row):
+            label = QtGui.QLabel(lab, labelsopts)
+            textbox = QtGui.QLineEdit(labelsopts)
+            textbox.setText(str(init))
+            textbox.setCursorPosition(0)
+            textbox.setFocusPolicy(QtCore.Qt.NoFocus)
+            labelsopts_grid.addWidget(label,   row, 0, 1, 1)
+            labelsopts_grid.addWidget(textbox, row, 1, 1, 1)
+
+        add_text_input("Title", lambda x: None, self.args.title,   0)
+        add_text_input("X",     lambda x: None, self.args.x_label, 1)
+        add_text_input("Y",     lambda x: None, self.args.y_label, 2)
+        add_text_input("Z",     lambda x: None, self.args.z_label, 3)
+
+        labelsdock.setWidget(labelsopts)
+
+
+    def makeOutputDock(self):
         outputdock = QtGui.QDockWidget("Output")
         outputdock.setAutoFillBackground(True)
         palette = outputdock.palette()
@@ -114,34 +177,27 @@ class MainWindow(QtGui.QMainWindow):
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, outputdock)
 
         outputopts = QtGui.QWidget()
-        # outputopts.setSizePolicy(QtGui.QSizePolicy(QtGui.QSizePolicy.Minimum,
-        #                                            QtGui.QSizePolicy.Minimum))
+        outputopts.setFixedWidth(self.xPxDim(1.75))
+        outputopts.setFixedHeight(self.yPxDim(1.5))
         outputopts_grid = QtGui.QGridLayout(outputopts)
 
         def add_text_input(lab, fun, init, row):
             label = QtGui.QLabel(lab, outputopts)
             textbox = QtGui.QLineEdit(outputopts)
             textbox.setText(str(init))
+            textbox.setCursorPosition(0)
+            textbox.setFocusPolicy(QtCore.Qt.NoFocus)
             outputopts_grid.addWidget(label,   row, 0, 1, 1)
             outputopts_grid.addWidget(textbox, row, 1, 1, 1)
 
-        add_text_input("Width", lambda x: None, args.width, 0)
-        add_text_input("Height", lambda x: None, args.height, 1)
-        add_text_input("DPI", lambda x: None, args.dpi, 2)
+        add_text_input("Width",  lambda x: None, self.args.width,  0)
+        add_text_input("Height", lambda x: None, self.args.height, 1)
+        add_text_input("DPI",    lambda x: None, self.args.dpi,    2)
         savebutton = QtGui.QPushButton("&Save as...")
         savebutton.clicked.connect(self.saveAs)
         outputopts_grid.addWidget(savebutton, 3, 0, 1, 2)
 
         outputdock.setWidget(outputopts)
-
-        self.drawthread.start()
-        self.redraw()
-
-
-    def closeEvent(self, event):
-        self.end_event.set()
-        self.redraw()
-        super().closeEvent(event)
 
 
     def saveAs(self):
@@ -163,15 +219,6 @@ class MainWindow(QtGui.QMainWindow):
             self.canvas.draw()
 
 
-    def updateTextBox(self,textBox,val):
-        textBox.setText(str(val))
-
-
-    @onlyInt
-    def updateSlider(self,slider,val):
-        slider.setSliderPosition(val)
-
-
     @onlyInt
     def setXmax(self,v):
         self.args.x_max = v
@@ -185,6 +232,14 @@ class MainWindow(QtGui.QMainWindow):
     @onlyInt
     def setZmax(self,v):
         self.args.z_max = v
+
+
+    def xPxDim(self,len):
+        return len * self.logicalDpiX()
+
+
+    def yPxDim(self,len):
+        return len * self.logicalDpiY()
 
 
 def get_args():
@@ -268,34 +323,6 @@ def find_peaks(matrix):
 
 
 def make_figure(figure, matrix, header, args):
-    if args.title is not None:
-        title = args.title
-    elif "Title" in header:
-        title = header["Title"]
-    else:
-        title = "Density Plot"
-
-    if args.x_label is not None:
-        x_label = args.x_label
-    elif "XLabel" in header:
-        x_label = header["XLabel"]
-    else:
-        x_label = "X"
-
-    if args.y_label is not None:
-        y_label = args.y_label
-    elif "YLabel" in header:
-        y_label = header["YLabel"]
-    else:
-        y_label = "Y"
-
-    if args.z_label is not None:
-        z_label = args.z_label
-    elif "ZLabel" in header:
-        z_label = header["ZLabel"]
-    else:
-        z_label = "Z"
-
     if args.contours == "smooth":
         matrix_smooth = ndimage.gaussian_filter(matrix, sigma=2.0, order=0)
 
@@ -304,7 +331,7 @@ def make_figure(figure, matrix, header, args):
                          cmap=cmaps.viridis,
                          rasterized=args.rasterised)
     ax.axis([0,args.x_max,0,args.y_max])
-    cbar = figure.colorbar(pcol, label=wrap(z_label))
+    cbar = figure.colorbar(pcol, label=wrap(args.z_label))
     cbar.solids.set_rasterized(args.rasterised)
     if args.z_max > 0:
         levels = np.arange(args.z_max/8, args.z_max, args.z_max/8)
@@ -315,9 +342,9 @@ def make_figure(figure, matrix, header, args):
             ax.contour(matrix_smooth, colors="white",
                        alpha=0.6, levels=levels)
 
-    ax.set_title(wrap(title))
-    ax.set_xlabel(wrap(x_label))
-    ax.set_ylabel(wrap(y_label))
+    ax.set_title(wrap(args.title))
+    ax.set_xlabel(wrap(args.x_label))
+    ax.set_ylabel(wrap(args.y_label))
     ax.grid(True, color="white", alpha=0.2)
 
 
@@ -351,6 +378,26 @@ def main(args):
         args.y_max = ymax
     if args.z_max is None:
         args.z_max = zmax
+
+    if args.title is None and "Title" in header:
+        args.title = header["Title"]
+    else:
+        args.title = "Density Plot"
+
+    if args.x_label is None and "XLabel" in header:
+        args.x_label = header["XLabel"]
+    else:
+        args.x_label = "X"
+
+    if args.y_label is None and "YLabel" in header:
+        args.y_label = header["YLabel"]
+    else:
+        args.y_label = "Y"
+
+    if args.z_label is None and "ZLabel" in header:
+        args.z_label = header["ZLabel"]
+    else:
+        args.z_label = "Z"
 
     if args.output:
         if args.output_type is not None:
