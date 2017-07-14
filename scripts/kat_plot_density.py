@@ -213,6 +213,12 @@ class MainWindow(QtGui.QMainWindow):
     def saveAs(self):
         filename = QtGui.QFileDialog.getSaveFileName(self)
         logging.info("Filename given: %s", filename)
+        figure = matplotlib.pyplot.figure(figsize=(self.args.width,
+                                                   self.args.height),
+                                          facecolor="white",
+                                          tight_layout=True)
+        make_figure(figure, self.matrix, self.args)
+        figure.savefig(correct_filename(filename), dpi=self.args.dpi)
 
 
     def redraw(self):
@@ -225,7 +231,7 @@ class MainWindow(QtGui.QMainWindow):
             redraw_event.clear()
             if end_event.isSet(): return
             self.figure.clear()
-            make_figure(self.figure, self.matrix, self.header, self.args)
+            make_figure(self.figure, self.matrix, self.args)
             self.canvas.draw()
 
 
@@ -366,7 +372,7 @@ def find_peaks(matrix):
     return xmax,ymax,zmax
 
 
-def make_figure(figure, matrix, header, args):
+def make_figure(figure, matrix, args):
     if args.contours == "smooth":
         matrix_smooth = ndimage.gaussian_filter(matrix, sigma=2.0, order=0)
 
@@ -396,10 +402,6 @@ def main(args):
     with open(args.matrix_file) as input_file:
         header = readheader(input_file)
         matrix = np.loadtxt(input_file)
-
-    figure = matplotlib.pyplot.figure(figsize=(args.width, args.height),
-                                      facecolor="white",
-                                      tight_layout=True)
 
     if "Transpose" in header and header["Transpose"] == '1':
         matrix = np.transpose(matrix)
@@ -443,12 +445,15 @@ def main(args):
     else:
         args.z_label = "Z"
 
+    figure = matplotlib.pyplot.figure(figsize=(args.width, args.height),
+                                      facecolor="white",
+                                      tight_layout=True)
     if args.output:
         if args.output_type is not None:
             output_name = args.output + '.' + args.output_type
         else:
             output_name = args.output
-        make_figure(figure,matrix,header,args)
+        make_figure(figure,matrix,args)
         figure.savefig(correct_filename(output_name), dpi=args.dpi)
     else:
         app = QtGui.QApplication(sys.argv)
