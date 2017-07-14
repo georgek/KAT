@@ -22,25 +22,27 @@ from kat_plot_misc import *
 from PyQt4 import QtCore, QtGui
 
 
-def onlyInt(fun):
-    """Only runs the function if the last argument can be coerced into an int,
+def onlyType(typ):
+    def onlyTypeDecorator(fun):
+        """Only runs the function if the last argument can be coerced into type,
 otherwise does nothing.
-    """
-    @functools.wraps(fun)
-    def wrapper(*args):
-        try:
-            v = int(args[-1])
-        except ValueError:
-            return
-        fun(*args[:-1], v)
-    return wrapper
+        """
+        @functools.wraps(fun)
+        def wrapper(*args):
+            try:
+                v = typ(args[-1])
+            except ValueError:
+                return
+            fun(*(args[:-1] + (v,)))
+        return wrapper
+    return onlyTypeDecorator
 
 
 def updateTextBox(textBox,val):
     textBox.setText(str(val))
 
 
-@onlyInt
+@onlyType(int)
 def updateSlider(slider,val):
     slider.setSliderPosition(val)
 
@@ -189,13 +191,18 @@ class MainWindow(QtGui.QMainWindow):
             textbox = QtGui.QLineEdit(outputopts)
             textbox.setText(str(init))
             textbox.setCursorPosition(0)
+            textbox.textChanged[str].connect(fun)
             outputopts_grid.addWidget(label,   row, 0, 1, 1)
             outputopts_grid.addWidget(textbox, row, 1, 1, 1)
             outputopts_grid.addWidget(unit,    row, 2, 1, 1)
+            return textbox
 
-        add_text_input("Width",      "cm", lambda x: None, self.args.width,  0)
-        add_text_input("Height",     "cm", lambda x: None, self.args.height, 1)
-        add_text_input("Resolution", "dpi",lambda x: None, self.args.dpi,    2)
+        wbox = add_text_input("Width",     "cm", self.setWidth, self.args.width, 0)
+        wbox.setValidator(QtGui.QDoubleValidator())
+        hbox = add_text_input("Height",    "cm", self.setHeight,self.args.height,1)
+        hbox.setValidator(QtGui.QDoubleValidator())
+        rbox = add_text_input("Resolution","dpi",self.setDPI,   self.args.dpi,   2)
+        rbox.setValidator(QtGui.QIntValidator())
         savebutton = QtGui.QPushButton("&Save as...")
         savebutton.clicked.connect(self.saveAs)
         outputopts_grid.addWidget(savebutton, 3, 0, 1, 3)
@@ -238,17 +245,35 @@ class MainWindow(QtGui.QMainWindow):
         self.args.z_label = str(v)
 
 
-    @onlyInt
+    @onlyType(int)
     def setXmax(self,v):
         self.args.x_max = v
 
 
-    @onlyInt
+    @onlyType(int)
     def setYmax(self,v):
         self.args.y_max = v
 
 
-    @onlyInt
+    @onlyType(float)
+    def setWidth(self,v):
+        logging.info("output width changed: %f", v)
+        self.args.width = v
+
+
+    @onlyType(float)
+    def setHeight(self,v):
+        logging.info("output height changed: %f", v)
+        self.args.height = v
+
+
+    @onlyType(int)
+    def setDPI(self,v):
+        logging.info("output resolution changed: %f", v)
+        self.args.dpi = v
+
+
+    @onlyType(int)
     def setZmax(self,v):
         self.args.z_max = v
 
