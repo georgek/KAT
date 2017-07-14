@@ -75,6 +75,7 @@ class MainWindow(QtGui.QMainWindow):
         self.makeAxisDock()
         self.makeLabelsDock()
         self.makeOutputDock()
+        self.makeMenus()
 
         self.drawthread.start()
         self.redraw()
@@ -84,6 +85,24 @@ class MainWindow(QtGui.QMainWindow):
         self.end_event.set()
         self.redraw()
         super().closeEvent(event)
+
+
+    def makeMenus(self):
+        fileMenu = self.menuBar().addMenu("&File")
+        a = QtGui.QAction("Save as...", self)
+        fileMenu.addAction(a)
+        a.triggered.connect(self.saveAs)
+
+        colourMenu = self.menuBar().addMenu("&Colour map")
+        colourGroup = QtGui.QActionGroup(self, exclusive=True)
+        for cmap in cmaps.__all__:
+            a = colourGroup.addAction(QtGui.QAction(cmap.capitalize(), self,
+                                                    checkable=True))
+            colourMenu.addAction(a)
+            a.triggered.connect(functools.partial(self.setCmap, cmap))
+            a.triggered.connect(self.redraw)
+            if cmap == args.cmap:
+                a.setChecked(True)
 
 
     def makeAxisDock(self):
@@ -284,6 +303,11 @@ class MainWindow(QtGui.QMainWindow):
         self.args.z_max = v
 
 
+    def setCmap(self,cmap):
+        if cmap in cmaps.__all__:
+            self.args.cmap = cmap
+
+
     def xPxDim(self,len):
         return len * self.logicalDpiX()
 
@@ -331,6 +355,9 @@ def get_args():
                         help="Height of canvas")
     parser.add_argument("--contours", choices=["none", "normal", "smooth"],
                         default="normal")
+    parser.add_argument("--cmap", choices=cmaps.__all__,
+                        default="viridis",
+                        help="Colour map (theme)")
     parser.add_argument("--not_rasterised", dest="rasterised",
                         action="store_false",
                         help="Don't rasterise graphics (slower).")
@@ -378,7 +405,7 @@ def make_figure(figure, matrix, args):
 
     ax = figure.add_subplot(111)
     pcol = ax.pcolormesh(matrix, vmin=0, vmax=args.z_max,
-                         cmap=cmaps.viridis,
+                         cmap=cmaps.cmaps[args.cmap],
                          rasterized=args.rasterised)
     ax.axis([0,args.x_max,0,args.y_max])
     cbar = figure.colorbar(pcol, label=wrap(args.z_label))

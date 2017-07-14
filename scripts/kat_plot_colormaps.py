@@ -13,6 +13,10 @@
 #
 # You should have received a copy of the CC0 legalcode along with this
 # work.  If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
+#
+# These will be included matplotlib 1.5 with Viridis being the new default For
+# more details about the new colourmaps and their reason for being, see:
+# http://bids.github.io/colormap/
 
 __all__ = ['magma', 'inferno', 'plasma', 'viridis']
 
