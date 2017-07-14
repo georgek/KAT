@@ -6,8 +6,6 @@ import threading
 import logging
 import functools
 
-logging.basicConfig(level=logging.INFO)
-
 import numpy as np
 import scipy.ndimage as ndimage
 
@@ -68,7 +66,7 @@ class MainWindow(QtGui.QMainWindow):
 
         self.dockwidth = 2
 
-        logging.info("screen dpi: %s, %s",
+        logging.info("Screen dpi: %s, %s",
                      self.logicalDpiX(),
                      self.logicalDpiY())
 
@@ -368,6 +366,11 @@ def get_args():
                         action="store_true",
                         help="Print extra information")
     parser.set_defaults(verbose=False)
+    parser.add_argument("--debug", dest="debug",
+                        action="store_true",
+                        help=argparse.SUPPRESS)
+    parser.set_defaults(debug=False)
+
 
     return parser.parse_args()
 
@@ -433,17 +436,15 @@ def main(args):
     if "Transpose" in header and header["Transpose"] == '1':
         matrix = np.transpose(matrix)
 
-    if args.verbose:
-        print("{:d} by {:d} matrix file loaded.".format(matrix.shape[0],
-                                                        matrix.shape[1]))
+    logging.info("%d by %d matrix file loaded.",
+                 matrix.shape[0], matrix.shape[1])
 
     if args.x_max is None or args.y_max is None or args.z_max is None:
         xmax,ymax,zmax = find_peaks(matrix)
-        if args.verbose:
-            print("Automatically detected axis limits:")
-            print("xmax: ", xmax)
-            print("ymax: ", ymax)
-            print("zmax: ", zmax)
+        logging.info("Automatically detected axis limits:")
+        logging.info("xmax: %d", xmax)
+        logging.info("ymax: %d", ymax)
+        logging.info("zmax: %d", zmax)
 
     if args.x_max is None:
         args.x_max = xmax
@@ -491,4 +492,8 @@ def main(args):
 
 if __name__ == '__main__':
     args = get_args()
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    elif args.verbose:
+        logging.basicConfig(level=logging.INFO)
     main(args)
