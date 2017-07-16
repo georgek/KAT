@@ -19,6 +19,28 @@ from kat_plot_misc import *
 
 from PyQt4 import QtCore, QtGui
 
+kat_version = "2.3.4"
+
+aboutString = """<h3>About KAT</h3>
+
+<p>This is KAT version {:s}.</p>
+
+<p>KAT is a suite of tools that analyse jellyfish hashes or sequence files
+(fasta or fastq) using kmer counts.</p>
+
+<p>KAT is licensed under the GNU General Public Licence v3.</p>
+
+<p>If you use KAT in your work and wish to cite us please use the following citation:</p>
+
+<p>Daniel Mapleson, Gonzalo Garcia Accinelli, George Kettleborough, Jonathan
+Wright, and Bernardo J. Clavijo.  <b>KAT: A K-mer Analysis Toolkit to quality
+control NGS datasets and genome assemblies</b> <i>Bioinformatics</i>,
+2016. doi: <a
+href="http://dx.doi.org/10.1093/bioinformatics/btw663">10.1093/bioinformatics/btw663</a></p>
+""".format(kat_version)
+
+onlineDocUrl="http://kat.readthedocs.io/en/latest/"
+
 
 def onlyType(typ):
     def onlyTypeDecorator(fun):
@@ -46,8 +68,9 @@ def updateSlider(slider,val):
 
 
 class MainWindow(QtGui.QMainWindow):
-    def __init__(self, figure, matrix, header, args):
+    def __init__(self, app, figure, matrix, header, args):
         super().__init__()
+        self.app = app
         self.figure = figure
         self.matrix = matrix
         self.header = header
@@ -90,6 +113,9 @@ class MainWindow(QtGui.QMainWindow):
         a = QtGui.QAction("Save as...", self)
         fileMenu.addAction(a)
         a.triggered.connect(self.saveAs)
+        a = QtGui.QAction("&Quit", self)
+        fileMenu.addAction(a)
+        a.triggered.connect(self.close)
 
         colourMenu = self.menuBar().addMenu("&Colour map")
         colourGroup = QtGui.QActionGroup(self, exclusive=True)
@@ -101,6 +127,30 @@ class MainWindow(QtGui.QMainWindow):
             a.triggered.connect(self.redraw)
             if cmap == args.cmap:
                 a.setChecked(True)
+
+        helpMenu = self.menuBar().addMenu("&Help")
+        a = QtGui.QAction("KAT documentation", self)
+        helpMenu.addAction(a)
+        a.triggered.connect(self.openOnlineDocs)
+        helpMenu.addSeparator()
+        a = QtGui.QAction("About Qt", self)
+        helpMenu.addAction(a)
+        a.triggered.connect(functools.partial(QtGui.QMessageBox.aboutQt,self))
+        a = QtGui.QAction("About KAT", self)
+        helpMenu.addAction(a)
+        a.triggered.connect(self.aboutWindow)
+
+
+    def openOnlineDocs(self):
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl(onlineDocUrl))
+
+
+    def aboutWindow(self):
+        mbox = QtGui.QMessageBox(self)
+        mbox.setWindowTitle("About KAT")
+        mbox.setText(aboutString)
+        mbox.setIconPixmap(self.windowIcon().pixmap(100,100))
+        mbox.exec_()
 
 
     def makeAxisDock(self):
@@ -491,7 +541,7 @@ def main(args):
         figure.savefig(correct_filename(output_name), dpi=args.dpi)
     else:
         app = QtGui.QApplication(sys.argv)
-        main = MainWindow(figure,matrix,header,args)
+        main = MainWindow(app,figure,matrix,header,args)
         main.show()
         sys.exit(app.exec_())
 
