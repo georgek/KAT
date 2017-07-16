@@ -41,6 +41,8 @@ href="http://dx.doi.org/10.1093/bioinformatics/btw663">10.1093/bioinformatics/bt
 
 onlineDocUrl="http://kat.readthedocs.io/en/latest/"
 
+contour_options = ["none", "normal", "smooth"]
+
 
 def onlyType(typ):
     def onlyTypeDecorator(fun):
@@ -117,7 +119,8 @@ class MainWindow(QtGui.QMainWindow):
         fileMenu.addAction(a)
         a.triggered.connect(self.close)
 
-        colourMenu = self.menuBar().addMenu("&Colour map")
+        optionsMenu = self.menuBar().addMenu("&Options")
+        colourMenu = optionsMenu.addMenu("Colour map")
         colourGroup = QtGui.QActionGroup(self, exclusive=True)
         for cmap in cmaps.__all__:
             a = colourGroup.addAction(QtGui.QAction(cmap.capitalize(), self,
@@ -126,6 +129,17 @@ class MainWindow(QtGui.QMainWindow):
             a.triggered.connect(functools.partial(self.setCmap, cmap))
             a.triggered.connect(self.redraw)
             if cmap == args.cmap:
+                a.setChecked(True)
+        contourMenu = optionsMenu.addMenu("Contours")
+        contourGroup = QtGui.QActionGroup(self, exclusive=True)
+        for contour_option in contour_options:
+            a = contourGroup.addAction(QtGui.QAction(contour_option.capitalize(),
+                                                     self, checkable=True))
+            contourMenu.addAction(a)
+            a.triggered.connect(functools.partial(self.setContourOption,
+                                                  contour_option))
+            a.triggered.connect(self.redraw)
+            if contour_option == args.contours:
                 a.setChecked(True)
 
         helpMenu = self.menuBar().addMenu("&Help")
@@ -362,6 +376,11 @@ class MainWindow(QtGui.QMainWindow):
             self.args.cmap = cmap
 
 
+    def setContourOption(self,contour_option):
+        if contour_option in contour_options:
+            self.args.contours = contour_option
+
+
     def xPxDim(self,len):
         return len * self.logicalDpiX()
 
@@ -407,7 +426,7 @@ def get_args():
                         help="Width of canvas")
     parser.add_argument("-l", "--height", type=int, default=6,
                         help="Height of canvas")
-    parser.add_argument("--contours", choices=["none", "normal", "smooth"],
+    parser.add_argument("--contours", choices=contour_options,
                         default="normal")
     parser.add_argument("--cmap", choices=cmaps.__all__,
                         default="viridis",
