@@ -106,6 +106,8 @@ class MainWindow(QtGui.QMainWindow):
     def makeAxisDock(self):
         axisdock = QtGui.QDockWidget("Axis limits")
         axisdock.setAutoFillBackground(True)
+        axisdock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable |
+                             QtGui.QDockWidget.DockWidgetMovable)
         palette = axisdock.palette()
         palette.setColor(axisdock.backgroundRole(), QtCore.Qt.white)
         axisdock.setPalette(palette)
@@ -161,6 +163,8 @@ class MainWindow(QtGui.QMainWindow):
     def makeLabelsDock(self):
         labelsdock = QtGui.QDockWidget("Labels")
         labelsdock.setAutoFillBackground(True)
+        labelsdock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable |
+                             QtGui.QDockWidget.DockWidgetMovable)
         palette = labelsdock.palette()
         palette.setColor(labelsdock.backgroundRole(), QtCore.Qt.white)
         labelsdock.setPalette(palette)
@@ -192,6 +196,8 @@ class MainWindow(QtGui.QMainWindow):
     def makeOutputDock(self):
         outputdock = QtGui.QDockWidget("Output")
         outputdock.setAutoFillBackground(True)
+        outputdock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable |
+                             QtGui.QDockWidget.DockWidgetMovable)
         palette = outputdock.palette()
         palette.setColor(outputdock.backgroundRole(), QtCore.Qt.white)
         outputdock.setPalette(palette)
