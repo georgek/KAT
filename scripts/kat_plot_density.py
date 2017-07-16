@@ -19,9 +19,9 @@ from kat_plot_misc import *
 
 from PyQt4 import QtCore, QtGui
 
-kat_version = "2.3.4"
+KAT_VERSION = "2.3.4"
 
-aboutString = """<h3>About KAT</h3>
+ABOUT = """<h3>About KAT</h3>
 
 <p>This is KAT version {:s}.</p>
 
@@ -37,18 +37,18 @@ Wright, and Bernardo J. Clavijo.  <b>KAT: A K-mer Analysis Toolkit to quality
 control NGS datasets and genome assemblies</b> <i>Bioinformatics</i>,
 2016. doi: <a
 href="http://dx.doi.org/10.1093/bioinformatics/btw663">10.1093/bioinformatics/btw663</a></p>
-""".format(kat_version)
+""".format(KAT_VERSION)
 
-onlineDocUrl="http://kat.readthedocs.io/en/latest/"
+ONLINE_DOC_URL = "http://kat.readthedocs.io/en/latest/"
 
-contour_options = ["none", "normal", "smooth"]
+CONTOUR_OPTIONS = ["none", "normal", "smooth"]
 
 
-def onlyType(typ):
-    def onlyTypeDecorator(fun):
-        """Only runs the function if the last argument can be coerced into type,
+def only_type(typ):
+    """Only runs the function if the last argument can be coerced into type,
 otherwise does nothing.
-        """
+    """
+    def only_type_decorator(fun):
         @functools.wraps(fun)
         def wrapper(*args):
             try:
@@ -57,15 +57,15 @@ otherwise does nothing.
                 return
             fun(*(args[:-1] + (v,)))
         return wrapper
-    return onlyTypeDecorator
+    return only_type_decorator
 
 
-def updateTextBox(textBox,val):
+def update_text_box(textBox, val):
     textBox.setText(str(val))
 
 
-@onlyType(int)
-def updateSlider(slider,val):
+@only_type(int)
+def update_slider(slider, val):
     slider.setSliderPosition(val)
 
 
@@ -95,10 +95,10 @@ class MainWindow(QtGui.QMainWindow):
                      self.logicalDpiX(),
                      self.logicalDpiY())
 
-        self.makeAxisDock()
-        self.makeLabelsDock()
-        self.makeOutputDock()
-        self.makeMenus()
+        self.make_axis_dock()
+        self.make_labels_dock()
+        self.make_output_dock()
+        self.make_menus()
 
         self.drawthread.start()
         self.redraw()
@@ -110,64 +110,64 @@ class MainWindow(QtGui.QMainWindow):
         super().closeEvent(event)
 
 
-    def makeMenus(self):
-        fileMenu = self.menuBar().addMenu("&File")
+    def make_menus(self):
+        file_menu = self.menuBar().addMenu("&File")
         a = QtGui.QAction("Save as...", self)
-        fileMenu.addAction(a)
-        a.triggered.connect(self.saveAs)
+        file_menu.addAction(a)
+        a.triggered.connect(self.save_as)
         a = QtGui.QAction("&Quit", self)
-        fileMenu.addAction(a)
+        file_menu.addAction(a)
         a.triggered.connect(self.close)
 
-        optionsMenu = self.menuBar().addMenu("&Options")
-        colourMenu = optionsMenu.addMenu("Colour map")
-        colourGroup = QtGui.QActionGroup(self, exclusive=True)
+        options_menu = self.menuBar().addMenu("&Options")
+        colour_menu = options_menu.addMenu("Colour map")
+        colour_group = QtGui.QActionGroup(self, exclusive=True)
         for cmap in cmaps.__all__:
-            a = colourGroup.addAction(QtGui.QAction(cmap.capitalize(), self,
-                                                    checkable=True))
-            colourMenu.addAction(a)
-            a.triggered.connect(functools.partial(self.setCmap, cmap))
+            a = colour_group.addAction(QtGui.QAction(cmap.capitalize(), self,
+                                                     checkable=True))
+            colour_menu.addAction(a)
+            a.triggered.connect(functools.partial(self.set_cmap, cmap))
             a.triggered.connect(self.redraw)
             if cmap == args.cmap:
                 a.setChecked(True)
-        contourMenu = optionsMenu.addMenu("Contours")
-        contourGroup = QtGui.QActionGroup(self, exclusive=True)
-        for contour_option in contour_options:
-            a = contourGroup.addAction(QtGui.QAction(contour_option.capitalize(),
-                                                     self, checkable=True))
-            contourMenu.addAction(a)
-            a.triggered.connect(functools.partial(self.setContourOption,
+        contour_menu = options_menu.addMenu("Contours")
+        contour_group = QtGui.QActionGroup(self, exclusive=True)
+        for contour_option in CONTOUR_OPTIONS:
+            a = contour_group.addAction(QtGui.QAction(contour_option.capitalize(),
+                                                      self, checkable=True))
+            contour_menu.addAction(a)
+            a.triggered.connect(functools.partial(self.set_contour_option,
                                                   contour_option))
             a.triggered.connect(self.redraw)
             if contour_option == args.contours:
                 a.setChecked(True)
 
-        helpMenu = self.menuBar().addMenu("&Help")
+        help_menu = self.menuBar().addMenu("&Help")
         a = QtGui.QAction("KAT documentation", self)
-        helpMenu.addAction(a)
-        a.triggered.connect(self.openOnlineDocs)
-        helpMenu.addSeparator()
+        help_menu.addAction(a)
+        a.triggered.connect(self.open_online_docs)
+        help_menu.addSeparator()
         a = QtGui.QAction("About Qt", self)
-        helpMenu.addAction(a)
-        a.triggered.connect(functools.partial(QtGui.QMessageBox.aboutQt,self))
+        help_menu.addAction(a)
+        a.triggered.connect(functools.partial(QtGui.QMessageBox.aboutQt, self))
         a = QtGui.QAction("About KAT", self)
-        helpMenu.addAction(a)
-        a.triggered.connect(self.aboutWindow)
+        help_menu.addAction(a)
+        a.triggered.connect(self.about_window)
 
 
-    def openOnlineDocs(self):
-        QtGui.QDesktopServices.openUrl(QtCore.QUrl(onlineDocUrl))
+    def open_online_docs(self):
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl(ONLINE_DOC_URL))
 
 
-    def aboutWindow(self):
+    def about_window(self):
         mbox = QtGui.QMessageBox(self)
         mbox.setWindowTitle("About KAT")
-        mbox.setText(aboutString)
-        mbox.setIconPixmap(self.windowIcon().pixmap(100,100))
+        mbox.setText(ABOUT)
+        mbox.setIconPixmap(self.windowIcon().pixmap(100, 100))
         mbox.exec_()
 
 
-    def makeAxisDock(self):
+    def make_axis_dock(self):
         axisdock = QtGui.QDockWidget("Axis limits")
         axisdock.setAutoFillBackground(True)
         axisdock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable |
@@ -178,8 +178,8 @@ class MainWindow(QtGui.QMainWindow):
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, axisdock)
 
         sliders = QtGui.QWidget()
-        sliders.setFixedWidth(self.xPxDim(self.dockwidth))
-        sliders.setFixedHeight(self.yPxDim(2))
+        sliders.setFixedWidth(self.x_px_dim(self.dockwidth))
+        sliders.setFixedHeight(self.y_px_dim(2))
         sliders_grid = QtGui.QGridLayout(sliders)
 
         def add_slider(lab, fun, init, maximum, col):
@@ -199,23 +199,23 @@ class MainWindow(QtGui.QMainWindow):
             sld.setTickInterval(maximum/10)
             sld.setTickPosition(QtGui.QSlider.TicksRight)
             sld.setFocusPolicy(QtCore.Qt.NoFocus)
-            textbox.textChanged[str].connect(functools.partial(updateSlider, sld))
+            textbox.textChanged[str].connect(functools.partial(update_slider, sld))
             sld.valueChanged[int].connect(fun)
-            sld.valueChanged[int].connect(functools.partial(updateTextBox, textbox))
+            sld.valueChanged[int].connect(functools.partial(update_text_box, textbox))
             sld.valueChanged.connect(self.redraw)
             sliders_grid.addWidget(label,   0, col)
             sliders_grid.addWidget(textbox, 1, col)
             sliders_grid.addWidget(sld,     2, col)
 
-        add_slider("x", self.setXmax,
+        add_slider("x", self.set_x_max,
                    self.args.x_max,
                    self.matrix.shape[1],
                    0)
-        add_slider("y", self.setYmax,
+        add_slider("y", self.set_y_max,
                    self.args.y_max,
                    self.matrix.shape[0],
                    1)
-        add_slider("z", self.setZmax,
+        add_slider("z", self.set_z_max,
                    self.args.z_max,
                    int(max((np.percentile(self.matrix, 99)+1)*5,
                            self.args.z_max*2)),
@@ -224,19 +224,19 @@ class MainWindow(QtGui.QMainWindow):
         axisdock.setWidget(sliders)
 
 
-    def makeLabelsDock(self):
+    def make_labels_dock(self):
         labelsdock = QtGui.QDockWidget("Labels")
         labelsdock.setAutoFillBackground(True)
         labelsdock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable |
-                             QtGui.QDockWidget.DockWidgetMovable)
+                               QtGui.QDockWidget.DockWidgetMovable)
         palette = labelsdock.palette()
         palette.setColor(labelsdock.backgroundRole(), QtCore.Qt.white)
         labelsdock.setPalette(palette)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, labelsdock)
 
         labelsopts = QtGui.QWidget()
-        labelsopts.setFixedWidth(self.xPxDim(self.dockwidth))
-        labelsopts.setFixedHeight(self.yPxDim(1.5))
+        labelsopts.setFixedWidth(self.x_px_dim(self.dockwidth))
+        labelsopts.setFixedHeight(self.y_px_dim(1.5))
         labelsopts_grid = QtGui.QGridLayout(labelsopts)
 
         def add_text_input(lab, fun, init, row):
@@ -249,27 +249,27 @@ class MainWindow(QtGui.QMainWindow):
             labelsopts_grid.addWidget(label,   row, 0, 1, 1)
             labelsopts_grid.addWidget(textbox, row, 1, 1, 1)
 
-        add_text_input("Title", self.setTitle,  self.args.title,   0)
-        add_text_input("X",     self.setXLabel, self.args.x_label, 1)
-        add_text_input("Y",     self.setYLabel, self.args.y_label, 2)
-        add_text_input("Z",     self.setZLabel, self.args.z_label, 3)
+        add_text_input("Title", self.set_title,  self.args.title,   0)
+        add_text_input("X",     self.set_x_label, self.args.x_label, 1)
+        add_text_input("Y",     self.set_y_label, self.args.y_label, 2)
+        add_text_input("Z",     self.set_z_label, self.args.z_label, 3)
 
         labelsdock.setWidget(labelsopts)
 
 
-    def makeOutputDock(self):
+    def make_output_dock(self):
         outputdock = QtGui.QDockWidget("Output")
         outputdock.setAutoFillBackground(True)
         outputdock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable |
-                             QtGui.QDockWidget.DockWidgetMovable)
+                               QtGui.QDockWidget.DockWidgetMovable)
         palette = outputdock.palette()
         palette.setColor(outputdock.backgroundRole(), QtCore.Qt.white)
         outputdock.setPalette(palette)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, outputdock)
 
         outputopts = QtGui.QWidget()
-        outputopts.setFixedWidth(self.xPxDim(self.dockwidth))
-        outputopts.setFixedHeight(self.yPxDim(1.5))
+        outputopts.setFixedWidth(self.x_px_dim(self.dockwidth))
+        outputopts.setFixedHeight(self.y_px_dim(1.5))
         outputopts_grid = QtGui.QGridLayout(outputopts)
 
         def add_text_input(lab, unit, fun, init, row):
@@ -284,20 +284,20 @@ class MainWindow(QtGui.QMainWindow):
             outputopts_grid.addWidget(unit,    row, 2, 1, 1)
             return textbox
 
-        wbox = add_text_input("Width",     "cm", self.setWidth, self.args.width, 0)
+        wbox = add_text_input("Width",     "cm", self.set_width, self.args.width, 0)
         wbox.setValidator(QtGui.QDoubleValidator())
-        hbox = add_text_input("Height",    "cm", self.setHeight,self.args.height,1)
+        hbox = add_text_input("Height",    "cm", self.set_height,self.args.height,1)
         hbox.setValidator(QtGui.QDoubleValidator())
-        rbox = add_text_input("Resolution","dpi",self.setDPI,   self.args.dpi,   2)
+        rbox = add_text_input("Resolution","dpi",self.set_dpi,   self.args.dpi,   2)
         rbox.setValidator(QtGui.QIntValidator())
         savebutton = QtGui.QPushButton("&Save as...")
-        savebutton.clicked.connect(self.saveAs)
+        savebutton.clicked.connect(self.save_as)
         outputopts_grid.addWidget(savebutton, 3, 0, 1, 3)
 
         outputdock.setWidget(outputopts)
 
 
-    def saveAs(self):
+    def save_as(self):
         filename = QtGui.QFileDialog.getSaveFileName(self)
         logging.info("Filename given: %s", filename)
         figure = matplotlib.pyplot.figure(figsize=(self.args.width,
@@ -322,70 +322,70 @@ class MainWindow(QtGui.QMainWindow):
             self.canvas.draw()
 
 
-    def setTitle(self,v):
+    def set_title(self, v):
         self.args.title = str(v)
 
 
-    def setXLabel(self,v):
+    def set_x_label(self, v):
         self.args.x_label = str(v)
 
 
-    def setYLabel(self,v):
+    def set_y_label(self, v):
         self.args.y_label = str(v)
 
 
-    def setZLabel(self,v):
+    def set_z_label(self, v):
         self.args.z_label = str(v)
 
 
-    @onlyType(int)
-    def setXmax(self,v):
+    @only_type(int)
+    def set_x_max(self, v):
         self.args.x_max = v
 
 
-    @onlyType(int)
-    def setYmax(self,v):
+    @only_type(int)
+    def set_y_max(self, v):
         self.args.y_max = v
 
 
-    @onlyType(float)
-    def setWidth(self,v):
+    @only_type(float)
+    def set_width(self, v):
         logging.info("output width changed: %f", v)
         self.args.width = v
 
 
-    @onlyType(float)
-    def setHeight(self,v):
+    @only_type(float)
+    def set_height(self, v):
         logging.info("output height changed: %f", v)
         self.args.height = v
 
 
-    @onlyType(int)
-    def setDPI(self,v):
+    @only_type(int)
+    def set_dpi(self, v):
         logging.info("output resolution changed: %f", v)
         self.args.dpi = v
 
 
-    @onlyType(int)
-    def setZmax(self,v):
+    @only_type(int)
+    def set_z_max(self, v):
         self.args.z_max = v
 
 
-    def setCmap(self,cmap):
+    def set_cmap(self, cmap):
         if cmap in cmaps.__all__:
             self.args.cmap = cmap
 
 
-    def setContourOption(self,contour_option):
-        if contour_option in contour_options:
+    def set_contour_option(self, contour_option):
+        if contour_option in CONTOUR_OPTIONS:
             self.args.contours = contour_option
 
 
-    def xPxDim(self,len):
+    def x_px_dim(self, len):
         return len * self.logicalDpiX()
 
 
-    def yPxDim(self,len):
+    def y_px_dim(self, len):
         return len * self.logicalDpiY()
 
 
@@ -426,7 +426,7 @@ def get_args():
                         help="Width of canvas")
     parser.add_argument("-l", "--height", type=int, default=6,
                         help="Height of canvas")
-    parser.add_argument("--contours", choices=contour_options,
+    parser.add_argument("--contours", choices=CONTOUR_OPTIONS,
                         default="normal")
     parser.add_argument("--cmap", choices=cmaps.__all__,
                         default="viridis",
@@ -556,7 +556,7 @@ def main(args):
             output_name = args.output + '.' + args.output_type
         else:
             output_name = args.output
-        make_figure(figure,matrix,args)
+        make_figure(figure, matrix, args)
         figure.savefig(correct_filename(output_name), dpi=args.dpi)
     else:
         app = QtGui.QApplication(sys.argv)
