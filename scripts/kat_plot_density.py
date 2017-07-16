@@ -14,100 +14,19 @@ matplotlib.use('Agg')
 import matplotlib.pyplot
 import matplotlib.backends.backend_qt4agg
 
+import kat_plot as k
 import kat_plot_colormaps as cmaps
-from kat_plot_misc import *
 
 from PyQt4 import QtCore, QtGui
 
-KAT_VERSION = "2.3.4"
-
-ABOUT = """<h3>About KAT</h3>
-
-<p>This is KAT version {:s}.</p>
-
-<p>KAT is a suite of tools that analyse jellyfish hashes or sequence files
-(fasta or fastq) using kmer counts.</p>
-
-<p>KAT is licensed under the GNU General Public Licence v3.</p>
-
-<p>If you use KAT in your work and wish to cite us please use the following citation:</p>
-
-<p>Daniel Mapleson, Gonzalo Garcia Accinelli, George Kettleborough, Jonathan
-Wright, and Bernardo J. Clavijo.  <b>KAT: A K-mer Analysis Toolkit to quality
-control NGS datasets and genome assemblies</b> <i>Bioinformatics</i>,
-2016. doi: <a
-href="http://dx.doi.org/10.1093/bioinformatics/btw663">10.1093/bioinformatics/btw663</a></p>
-""".format(KAT_VERSION)
-
-ONLINE_DOC_URL = "http://kat.readthedocs.io/en/latest/"
-
-CONTOUR_OPTIONS = ["none", "normal", "smooth"]
-
-
-def only_type(typ):
-    """Only runs the function if the last argument can be coerced into type,
-otherwise does nothing.
-    """
-    def only_type_decorator(fun):
-        @functools.wraps(fun)
-        def wrapper(*args):
-            try:
-                v = typ(args[-1])
-            except ValueError:
-                return
-            fun(*(args[:-1] + (v,)))
-        return wrapper
-    return only_type_decorator
-
-
-def update_text_box(textBox, val):
-    textBox.setText(str(val))
-
-
-@only_type(int)
-def update_slider(slider, val):
-    slider.setSliderPosition(val)
-
-
-class MainWindow(QtGui.QMainWindow):
-    def __init__(self, app, figure, matrix, header, args):
-        super().__init__()
-        self.app = app
-        self.figure = figure
-        self.matrix = matrix
-        self.header = header
-        self.args = args
-
-        self.setWindowTitle("KAT plot")
-        self.setWindowIcon(QtGui.QIcon("kat_logo.png"))
-
-        self.canvas = matplotlib.backends.backend_qt4agg.FigureCanvasQTAgg(self.figure)
-        self.setCentralWidget(self.canvas)
-
-        self.redraw_event = threading.Event()
-        self.end_event = threading.Event()
-        self.drawthread = threading.Thread(target=self.async_redraw,
-                                           args=(self.redraw_event, self.end_event))
-
-        self.dockwidth = 2
-
-        logging.info("Screen dpi: %s, %s",
-                     self.logicalDpiX(),
-                     self.logicalDpiY())
+class KatDensityWindow(k.KatPlotWindow):
+    def __init__(self, matrix, args, make_figure_fun):
+        super().__init__(matrix, args, make_figure_fun)
 
         self.make_axis_dock()
         self.make_labels_dock()
         self.make_output_dock()
         self.make_menus()
-
-        self.drawthread.start()
-        self.redraw()
-
-
-    def closeEvent(self, event):
-        self.end_event.set()
-        self.redraw()
-        super().closeEvent(event)
 
 
     def make_menus(self):
@@ -132,7 +51,7 @@ class MainWindow(QtGui.QMainWindow):
                 a.setChecked(True)
         contour_menu = options_menu.addMenu("Contours")
         contour_group = QtGui.QActionGroup(self, exclusive=True)
-        for contour_option in CONTOUR_OPTIONS:
+        for contour_option in k.CONTOUR_OPTIONS:
             a = contour_group.addAction(QtGui.QAction(contour_option.capitalize(),
                                                       self, checkable=True))
             contour_menu.addAction(a)
@@ -153,18 +72,6 @@ class MainWindow(QtGui.QMainWindow):
         a = QtGui.QAction("About KAT", self)
         help_menu.addAction(a)
         a.triggered.connect(self.about_window)
-
-
-    def open_online_docs(self):
-        QtGui.QDesktopServices.openUrl(QtCore.QUrl(ONLINE_DOC_URL))
-
-
-    def about_window(self):
-        mbox = QtGui.QMessageBox(self)
-        mbox.setWindowTitle("About KAT")
-        mbox.setText(ABOUT)
-        mbox.setIconPixmap(self.windowIcon().pixmap(100, 100))
-        mbox.exec_()
 
 
     def make_axis_dock(self):
@@ -199,9 +106,9 @@ class MainWindow(QtGui.QMainWindow):
             sld.setTickInterval(maximum/10)
             sld.setTickPosition(QtGui.QSlider.TicksRight)
             sld.setFocusPolicy(QtCore.Qt.NoFocus)
-            textbox.textChanged[str].connect(functools.partial(update_slider, sld))
+            textbox.textChanged[str].connect(functools.partial(k.update_slider, sld))
             sld.valueChanged[int].connect(fun)
-            sld.valueChanged[int].connect(functools.partial(update_text_box, textbox))
+            sld.valueChanged[int].connect(functools.partial(k.update_text_box, textbox))
             sld.valueChanged.connect(self.redraw)
             sliders_grid.addWidget(label,   0, col)
             sliders_grid.addWidget(textbox, 1, col)
@@ -297,31 +204,6 @@ class MainWindow(QtGui.QMainWindow):
         outputdock.setWidget(outputopts)
 
 
-    def save_as(self):
-        filename = QtGui.QFileDialog.getSaveFileName(self)
-        logging.info("Filename given: %s", filename)
-        figure = matplotlib.pyplot.figure(figsize=(self.args.width,
-                                                   self.args.height),
-                                          facecolor="white",
-                                          tight_layout=True)
-        make_figure(figure, self.matrix, self.args)
-        figure.savefig(correct_filename(filename), dpi=self.args.dpi)
-
-
-    def redraw(self):
-        self.redraw_event.set()
-
-
-    def async_redraw(self, redraw_event, end_event):
-        while True:
-            redraw_event.wait()
-            redraw_event.clear()
-            if end_event.isSet(): return
-            self.figure.clear()
-            make_figure(self.figure, self.matrix, self.args)
-            self.canvas.draw()
-
-
     def set_title(self, v):
         self.args.title = str(v)
 
@@ -338,35 +220,35 @@ class MainWindow(QtGui.QMainWindow):
         self.args.z_label = str(v)
 
 
-    @only_type(int)
+    @k.only_type(int)
     def set_x_max(self, v):
         self.args.x_max = v
 
 
-    @only_type(int)
+    @k.only_type(int)
     def set_y_max(self, v):
         self.args.y_max = v
 
 
-    @only_type(float)
+    @k.only_type(float)
     def set_width(self, v):
         logging.info("output width changed: %f", v)
         self.args.width = v
 
 
-    @only_type(float)
+    @k.only_type(float)
     def set_height(self, v):
         logging.info("output height changed: %f", v)
         self.args.height = v
 
 
-    @only_type(int)
+    @k.only_type(int)
     def set_dpi(self, v):
         logging.info("output resolution changed: %f", v)
         self.args.dpi = v
 
 
-    @only_type(int)
+    @k.only_type(int)
     def set_z_max(self, v):
         self.args.z_max = v
 
@@ -377,7 +259,7 @@ class MainWindow(QtGui.QMainWindow):
 
 
     def set_contour_option(self, contour_option):
-        if contour_option in CONTOUR_OPTIONS:
+        if contour_option in k.CONTOUR_OPTIONS:
             self.args.contours = contour_option
 
 
@@ -426,7 +308,7 @@ def get_args():
                         help="Width of canvas")
     parser.add_argument("-l", "--height", type=int, default=6,
                         help="Height of canvas")
-    parser.add_argument("--contours", choices=CONTOUR_OPTIONS,
+    parser.add_argument("--contours", choices=k.CONTOUR_OPTIONS,
                         default="normal")
     parser.add_argument("--cmap", choices=cmaps.__all__,
                         default="viridis",
@@ -454,8 +336,8 @@ def find_peaks(matrix):
     msum = np.sum(matrix)
     xsums = np.sum(matrix, 0)
     ysums = np.sum(matrix, 1)
-    peakx = findpeaks(xsums)
-    peaky = findpeaks(ysums)
+    peakx = k.find_peaks(xsums)
+    peaky = k.find_peaks(ysums)
     # ignore peaks at 1
     peakx = peakx[peakx != 1]
     peaky = peaky[peaky != 1]
@@ -486,7 +368,7 @@ def make_figure(figure, matrix, args):
                          cmap=cmaps.cmaps[args.cmap],
                          rasterized=args.rasterised)
     ax.axis([0,args.x_max,0,args.y_max])
-    cbar = figure.colorbar(pcol, label=wrap(args.z_label))
+    cbar = figure.colorbar(pcol, label=k.wrap(args.z_label))
     cbar.solids.set_rasterized(args.rasterised)
     if args.z_max > 0:
         levels = np.arange(args.z_max/8, args.z_max, args.z_max/8)
@@ -497,15 +379,15 @@ def make_figure(figure, matrix, args):
             ax.contour(matrix_smooth, colors="white",
                        alpha=0.6, levels=levels)
 
-    ax.set_title(wrap(args.title))
-    ax.set_xlabel(wrap(args.x_label))
-    ax.set_ylabel(wrap(args.y_label))
+    ax.set_title(k.wrap(args.title))
+    ax.set_xlabel(k.wrap(args.x_label))
+    ax.set_ylabel(k.wrap(args.y_label))
     ax.grid(True, color="white", alpha=0.2)
 
 
 def main(args):
     with open(args.matrix_file) as input_file:
-        header = readheader(input_file)
+        header = k.readheader(input_file)
         matrix = np.loadtxt(input_file)
 
     if "Transpose" in header and header["Transpose"] == '1':
@@ -548,19 +430,17 @@ def main(args):
     else:
         args.z_label = "Z"
 
-    figure = matplotlib.pyplot.figure(figsize=(args.width, args.height),
-                                      facecolor="white",
-                                      tight_layout=True)
     if args.output:
+        figure = k.new_figure(args.width, args.height)
         if args.output_type is not None:
             output_name = args.output + '.' + args.output_type
         else:
             output_name = args.output
         make_figure(figure, matrix, args)
-        figure.savefig(correct_filename(output_name), dpi=args.dpi)
+        figure.savefig(k.correct_filename(output_name), dpi=args.dpi)
     else:
         app = QtGui.QApplication(sys.argv)
-        main = MainWindow(app,figure,matrix,header,args)
+        main = KatDensityWindow(matrix, args, make_figure)
         main.show()
         sys.exit(app.exec_())
 
