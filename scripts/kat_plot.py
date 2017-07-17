@@ -69,6 +69,13 @@ def update_slider(slider, val):
     slider.setSliderPosition(val)
 
 
+CM_PER_INCH = 2.54
+
+
+def cm2inch(v):
+    return v/CM_PER_INCH
+
+
 def readheader(input_file):
     header = {}
     for line in input_file:
@@ -114,7 +121,9 @@ def wrap(name):
 
 
 def new_figure(width, height):
-    figure = matplotlib.pyplot.figure(figsize=(width, height),
+    "Makes new figure with width and height in cm."
+    figure = matplotlib.pyplot.figure(figsize=(cm2inch(width),
+                                               cm2inch(height)),
                                       facecolor="white",
                                       tight_layout=True)
     return figure
@@ -170,8 +179,8 @@ class KatPlotWindow(QtGui.QMainWindow):
     def save_as(self):
         filename = QtGui.QFileDialog.getSaveFileName(self)
         logging.info("Filename given: %s", filename)
-        figure = matplotlib.pyplot.figure(figsize=(self.args.width,
-                                                   self.args.height),
+        figure = matplotlib.pyplot.figure(figsize=(cm2inch(self.args.width),
+                                                   cm2inch(self.args.height)),
                                           facecolor="white",
                                           tight_layout=True)
         self.make_figure(figure, self.matrix, self.args)

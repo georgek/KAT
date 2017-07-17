@@ -304,10 +304,10 @@ def get_args():
                         help="Maximum value for y-axis")
     parser.add_argument("-z", "--z_max", type=int,
                         help="Maximum value for z-axis")
-    parser.add_argument("-w", "--width", type=int, default=8,
-                        help="Width of canvas")
-    parser.add_argument("-l", "--height", type=int, default=6,
-                        help="Height of canvas")
+    parser.add_argument("-w", "--width", type=int, default=20,
+                        help="Width of canvas (cm)")
+    parser.add_argument("-l", "--height", type=int, default=15,
+                        help="Height of canvas (cm)")
     parser.add_argument("--contours", choices=k.CONTOUR_OPTIONS,
                         default="normal")
     parser.add_argument("--cmap", choices=cmaps.__all__,
