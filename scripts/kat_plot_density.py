@@ -23,189 +23,53 @@ class KatDensityWindow(k.KatPlotWindow):
     def __init__(self, matrix, args, make_figure_fun):
         super().__init__(matrix, args, make_figure_fun)
 
+        def kat_density_plot_menus():
+            options_menu = self.menuBar().addMenu("&Options")
+            colour_menu = options_menu.addMenu("Colour map")
+            colour_group = QtGui.QActionGroup(self, exclusive=True)
+            for cmap in cmaps.__all__:
+                a = colour_group.addAction(QtGui.QAction(cmap.capitalize(), self,
+                                                         checkable=True))
+                colour_menu.addAction(a)
+                a.triggered.connect(functools.partial(self.set_cmap, cmap))
+                a.triggered.connect(self.redraw)
+                if cmap == args.cmap:
+                    a.setChecked(True)
+            contour_menu = options_menu.addMenu("Contours")
+            contour_group = QtGui.QActionGroup(self, exclusive=True)
+            for contour_option in k.CONTOUR_OPTIONS:
+                a = contour_group.addAction(QtGui.QAction(contour_option.capitalize(),
+                                                          self, checkable=True))
+                contour_menu.addAction(a)
+                a.triggered.connect(functools.partial(self.set_contour_option,
+                                                      contour_option))
+                a.triggered.connect(self.redraw)
+                if contour_option == args.contours:
+                    a.setChecked(True)
+        self.make_menus(kat_density_plot_menus)
+
         self.make_axis_dock()
+        self.add_axis_slider("x", self.set_x_max,
+                             self.args.x_max,
+                             self.matrix.shape[1],
+                             0)
+        self.add_axis_slider("y", self.set_y_max,
+                             self.args.y_max,
+                             self.matrix.shape[0],
+                             1)
+        self.add_axis_slider("z", self.set_z_max,
+                             self.args.z_max,
+                             int(max((np.percentile(self.matrix, 99)+1)*5,
+                                     self.args.z_max*2)),
+                             2)
+
         self.make_labels_dock()
+        self.add_labels_input("Title", self.set_title,   self.args.title,   0)
+        self.add_labels_input("X",     self.set_x_label, self.args.x_label, 1)
+        self.add_labels_input("Y",     self.set_y_label, self.args.y_label, 2)
+        self.add_labels_input("Z",     self.set_z_label, self.args.z_label, 3)
+
         self.make_output_dock()
-        self.make_menus()
-
-
-    def make_menus(self):
-        file_menu = self.menuBar().addMenu("&File")
-        a = QtGui.QAction("Save as...", self)
-        file_menu.addAction(a)
-        a.triggered.connect(self.save_as)
-        a = QtGui.QAction("&Quit", self)
-        file_menu.addAction(a)
-        a.triggered.connect(self.close)
-
-        options_menu = self.menuBar().addMenu("&Options")
-        colour_menu = options_menu.addMenu("Colour map")
-        colour_group = QtGui.QActionGroup(self, exclusive=True)
-        for cmap in cmaps.__all__:
-            a = colour_group.addAction(QtGui.QAction(cmap.capitalize(), self,
-                                                     checkable=True))
-            colour_menu.addAction(a)
-            a.triggered.connect(functools.partial(self.set_cmap, cmap))
-            a.triggered.connect(self.redraw)
-            if cmap == args.cmap:
-                a.setChecked(True)
-        contour_menu = options_menu.addMenu("Contours")
-        contour_group = QtGui.QActionGroup(self, exclusive=True)
-        for contour_option in k.CONTOUR_OPTIONS:
-            a = contour_group.addAction(QtGui.QAction(contour_option.capitalize(),
-                                                      self, checkable=True))
-            contour_menu.addAction(a)
-            a.triggered.connect(functools.partial(self.set_contour_option,
-                                                  contour_option))
-            a.triggered.connect(self.redraw)
-            if contour_option == args.contours:
-                a.setChecked(True)
-
-        help_menu = self.menuBar().addMenu("&Help")
-        a = QtGui.QAction("KAT documentation", self)
-        help_menu.addAction(a)
-        a.triggered.connect(self.open_online_docs)
-        help_menu.addSeparator()
-        a = QtGui.QAction("About Qt", self)
-        help_menu.addAction(a)
-        a.triggered.connect(functools.partial(QtGui.QMessageBox.aboutQt, self))
-        a = QtGui.QAction("About KAT", self)
-        help_menu.addAction(a)
-        a.triggered.connect(self.about_window)
-
-
-    def make_axis_dock(self):
-        axisdock = QtGui.QDockWidget("Axis limits")
-        axisdock.setAutoFillBackground(True)
-        axisdock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable |
-                             QtGui.QDockWidget.DockWidgetMovable)
-        palette = axisdock.palette()
-        palette.setColor(axisdock.backgroundRole(), QtCore.Qt.white)
-        axisdock.setPalette(palette)
-        self.addDockWidget(QtCore.Qt.RightDockWidgetArea, axisdock)
-
-        sliders = QtGui.QWidget()
-        sliders.setFixedWidth(self.x_px_dim(self.dockwidth))
-        sliders.setFixedHeight(self.y_px_dim(2))
-        sliders_grid = QtGui.QGridLayout(sliders)
-
-        def add_slider(lab, fun, init, maximum, col):
-            logging.debug("add_slider: %s", locals())
-            label = QtGui.QLabel(lab, sliders)
-            label.setAlignment(QtCore.Qt.AlignCenter)
-            textbox = QtGui.QLineEdit(sliders)
-            textbox.setText(str(init))
-            textbox.setCursorPosition(0)
-            # let the user type a higher number as this will be corrected by
-            # the slider
-            textbox.setValidator(QtGui.QIntValidator(1, maximum*10))
-            sld = QtGui.QSlider(QtCore.Qt.Vertical, sliders)
-            sld.setMinimum(1)
-            sld.setMaximum(maximum)
-            sld.setSliderPosition(init)
-            sld.setTickInterval(maximum/10)
-            sld.setTickPosition(QtGui.QSlider.TicksRight)
-            sld.setFocusPolicy(QtCore.Qt.NoFocus)
-            textbox.textChanged[str].connect(functools.partial(k.update_slider, sld))
-            sld.valueChanged[int].connect(fun)
-            sld.valueChanged[int].connect(functools.partial(k.update_text_box, textbox))
-            sld.valueChanged.connect(self.redraw)
-            sliders_grid.addWidget(label,   0, col)
-            sliders_grid.addWidget(textbox, 1, col)
-            sliders_grid.addWidget(sld,     2, col)
-
-        add_slider("x", self.set_x_max,
-                   self.args.x_max,
-                   self.matrix.shape[1],
-                   0)
-        add_slider("y", self.set_y_max,
-                   self.args.y_max,
-                   self.matrix.shape[0],
-                   1)
-        add_slider("z", self.set_z_max,
-                   self.args.z_max,
-                   int(max((np.percentile(self.matrix, 99)+1)*5,
-                           self.args.z_max*2)),
-                   2)
-
-        axisdock.setWidget(sliders)
-
-
-    def make_labels_dock(self):
-        labelsdock = QtGui.QDockWidget("Labels")
-        labelsdock.setAutoFillBackground(True)
-        labelsdock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable |
-                               QtGui.QDockWidget.DockWidgetMovable)
-        palette = labelsdock.palette()
-        palette.setColor(labelsdock.backgroundRole(), QtCore.Qt.white)
-        labelsdock.setPalette(palette)
-        self.addDockWidget(QtCore.Qt.RightDockWidgetArea, labelsdock)
-
-        labelsopts = QtGui.QWidget()
-        labelsopts.setFixedWidth(self.x_px_dim(self.dockwidth))
-        labelsopts.setFixedHeight(self.y_px_dim(1.5))
-        labelsopts_grid = QtGui.QGridLayout(labelsopts)
-
-        def add_text_input(lab, fun, init, row):
-            label = QtGui.QLabel(lab, labelsopts)
-            textbox = QtGui.QLineEdit(labelsopts)
-            textbox.setText(str(init))
-            textbox.setCursorPosition(0)
-            textbox.textChanged[str].connect(fun)
-            textbox.textChanged.connect(self.redraw)
-            labelsopts_grid.addWidget(label,   row, 0, 1, 1)
-            labelsopts_grid.addWidget(textbox, row, 1, 1, 1)
-
-        add_text_input("Title", self.set_title,  self.args.title,   0)
-        add_text_input("X",     self.set_x_label, self.args.x_label, 1)
-        add_text_input("Y",     self.set_y_label, self.args.y_label, 2)
-        add_text_input("Z",     self.set_z_label, self.args.z_label, 3)
-
-        labelsdock.setWidget(labelsopts)
-
-
-    def make_output_dock(self):
-        outputdock = QtGui.QDockWidget("Output")
-        outputdock.setAutoFillBackground(True)
-        outputdock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable |
-                               QtGui.QDockWidget.DockWidgetMovable)
-        palette = outputdock.palette()
-        palette.setColor(outputdock.backgroundRole(), QtCore.Qt.white)
-        outputdock.setPalette(palette)
-        self.addDockWidget(QtCore.Qt.RightDockWidgetArea, outputdock)
-
-        outputopts = QtGui.QWidget()
-        outputopts.setFixedWidth(self.x_px_dim(self.dockwidth))
-        outputopts.setFixedHeight(self.y_px_dim(1.5))
-        outputopts_grid = QtGui.QGridLayout(outputopts)
-
-        def add_text_input(lab, unit, fun, init, row):
-            label = QtGui.QLabel(lab, outputopts)
-            unit = QtGui.QLabel(unit, outputopts)
-            textbox = QtGui.QLineEdit(outputopts)
-            textbox.setText(str(init))
-            textbox.setCursorPosition(0)
-            textbox.textChanged[str].connect(fun)
-            outputopts_grid.addWidget(label,   row, 0, 1, 1)
-            outputopts_grid.addWidget(textbox, row, 1, 1, 1)
-            outputopts_grid.addWidget(unit,    row, 2, 1, 1)
-            return textbox
-
-        wbox = add_text_input("Width",     "cm", self.set_width, self.args.width, 0)
-        wbox.setValidator(QtGui.QDoubleValidator())
-        hbox = add_text_input("Height",    "cm", self.set_height,self.args.height,1)
-        hbox.setValidator(QtGui.QDoubleValidator())
-        rbox = add_text_input("Resolution","dpi",self.set_dpi,   self.args.dpi,   2)
-        rbox.setValidator(QtGui.QIntValidator())
-        savebutton = QtGui.QPushButton("&Save as...")
-        savebutton.clicked.connect(self.save_as)
-        outputopts_grid.addWidget(savebutton, 3, 0, 1, 3)
-
-        outputdock.setWidget(outputopts)
-
-
-    def set_title(self, v):
-        self.args.title = str(v)
 
 
     def set_x_label(self, v):
@@ -230,24 +94,6 @@ class KatDensityWindow(k.KatPlotWindow):
         self.args.y_max = v
 
 
-    @k.only_type(float)
-    def set_width(self, v):
-        logging.info("output width changed: %f", v)
-        self.args.width = v
-
-
-    @k.only_type(float)
-    def set_height(self, v):
-        logging.info("output height changed: %f", v)
-        self.args.height = v
-
-
-    @k.only_type(int)
-    def set_dpi(self, v):
-        logging.info("output resolution changed: %f", v)
-        self.args.dpi = v
-
-
     @k.only_type(int)
     def set_z_max(self, v):
         self.args.z_max = v
@@ -261,14 +107,6 @@ class KatDensityWindow(k.KatPlotWindow):
     def set_contour_option(self, contour_option):
         if contour_option in k.CONTOUR_OPTIONS:
             self.args.contours = contour_option
-
-
-    def x_px_dim(self, len):
-        return len * self.logicalDpiX()
-
-
-    def y_px_dim(self, len):
-        return len * self.logicalDpiY()
 
 
 def get_args():
@@ -386,9 +224,12 @@ def make_figure(figure, matrix, args):
 
 
 def main(args):
-    with open(args.matrix_file) as input_file:
-        header = k.readheader(input_file)
-        matrix = np.loadtxt(input_file)
+    try:
+        with open(args.matrix_file) as input_file:
+            header = k.readheader(input_file)
+            matrix = np.loadtxt(input_file)
+    except FileNotFoundError as e:
+        sys.exit(e)
 
     if "Transpose" in header and header["Transpose"] == '1':
         matrix = np.transpose(matrix)

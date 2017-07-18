@@ -199,3 +199,174 @@ class KatPlotWindow(QtGui.QMainWindow):
             self.figure.clear()
             self.make_figure(self.figure, self.matrix, self.args)
             self.canvas.draw()
+
+
+    def make_menus(self, extra_menu_fun):
+        """Makes the standard menus and calls extra_menu_fun before the help menu
+which can be used to add extra menus.
+        """
+        file_menu = self.menuBar().addMenu("&File")
+        a = QtGui.QAction("Save as...", self)
+        file_menu.addAction(a)
+        a.triggered.connect(self.save_as)
+        a = QtGui.QAction("&Quit", self)
+        file_menu.addAction(a)
+        a.triggered.connect(self.close)
+
+        extra_menu_fun()
+
+        help_menu = self.menuBar().addMenu("&Help")
+        a = QtGui.QAction("KAT documentation", self)
+        help_menu.addAction(a)
+        a.triggered.connect(self.open_online_docs)
+        help_menu.addSeparator()
+        a = QtGui.QAction("About Qt", self)
+        help_menu.addAction(a)
+        a.triggered.connect(functools.partial(QtGui.QMessageBox.aboutQt, self))
+        a = QtGui.QAction("About KAT", self)
+        help_menu.addAction(a)
+        a.triggered.connect(self.about_window)
+
+
+    def make_axis_dock(self):
+        self.axisdock = QtGui.QDockWidget("Axis limits")
+        self.axisdock.setAutoFillBackground(True)
+        self.axisdock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable |
+                             QtGui.QDockWidget.DockWidgetMovable)
+        palette = self.axisdock.palette()
+        palette.setColor(self.axisdock.backgroundRole(), QtCore.Qt.white)
+        self.axisdock.setPalette(palette)
+        self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.axisdock)
+
+        self.sliders = QtGui.QWidget()
+        self.sliders.setFixedWidth(self.x_px_dim(self.dockwidth))
+        self.sliders.setFixedHeight(self.y_px_dim(2))
+        self.sliders_grid = QtGui.QGridLayout(self.sliders)
+        self.axisdock.setWidget(self.sliders)
+
+
+    def add_axis_slider(self, lab, fun, init, maximum, col):
+        logging.debug("add_slider: %s", locals())
+        label = QtGui.QLabel(lab, self.sliders)
+        label.setAlignment(QtCore.Qt.AlignCenter)
+        textbox = QtGui.QLineEdit(self.sliders)
+        textbox.setText(str(init))
+        textbox.setCursorPosition(0)
+        # let the user type a higher number as this will be corrected by
+        # the slider
+        textbox.setValidator(QtGui.QIntValidator(1, maximum*10))
+        sld = QtGui.QSlider(QtCore.Qt.Vertical, self.sliders)
+        sld.setMinimum(1)
+        sld.setMaximum(maximum)
+        sld.setSliderPosition(init)
+        sld.setTickInterval(maximum/10)
+        sld.setTickPosition(QtGui.QSlider.TicksRight)
+        sld.setFocusPolicy(QtCore.Qt.NoFocus)
+        textbox.textChanged[str].connect(functools.partial(update_slider, sld))
+        sld.valueChanged[int].connect(fun)
+        sld.valueChanged[int].connect(functools.partial(update_text_box, textbox))
+        sld.valueChanged.connect(self.redraw)
+        self.sliders_grid.addWidget(label,   0, col)
+        self.sliders_grid.addWidget(textbox, 1, col)
+        self.sliders_grid.addWidget(sld,     2, col)
+
+
+    def make_labels_dock(self):
+        self.labelsdock = QtGui.QDockWidget("Labels")
+        self.labelsdock.setAutoFillBackground(True)
+        self.labelsdock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable |
+                                    QtGui.QDockWidget.DockWidgetMovable)
+        palette = self.labelsdock.palette()
+        palette.setColor(self.labelsdock.backgroundRole(), QtCore.Qt.white)
+        self.labelsdock.setPalette(palette)
+        self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.labelsdock)
+
+        self.labelsopts = QtGui.QWidget()
+        self.labelsopts.setFixedWidth(self.x_px_dim(self.dockwidth))
+        self.labelsopts.setFixedHeight(self.y_px_dim(1.5))
+        self.labelsopts_grid = QtGui.QGridLayout(self.labelsopts)
+        self.labelsdock.setWidget(self.labelsopts)
+
+
+    def add_labels_input(self, lab, fun, init, row):
+        label = QtGui.QLabel(lab, self.labelsopts)
+        textbox = QtGui.QLineEdit(self.labelsopts)
+        textbox.setText(str(init))
+        textbox.setCursorPosition(0)
+        textbox.textChanged[str].connect(fun)
+        textbox.textChanged.connect(self.redraw)
+        self.labelsopts_grid.addWidget(label,   row, 0, 1, 1)
+        self.labelsopts_grid.addWidget(textbox, row, 1, 1, 1)
+
+
+    def make_output_dock(self):
+        self.outputdock = QtGui.QDockWidget("Output")
+        self.outputdock.setAutoFillBackground(True)
+        self.outputdock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable |
+                                    QtGui.QDockWidget.DockWidgetMovable)
+        palette = self.outputdock.palette()
+        palette.setColor(self.outputdock.backgroundRole(), QtCore.Qt.white)
+        self.outputdock.setPalette(palette)
+        self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.outputdock)
+
+        self.outputopts = QtGui.QWidget()
+        self.outputopts.setFixedWidth(self.x_px_dim(self.dockwidth))
+        self.outputopts.setFixedHeight(self.y_px_dim(1.5))
+        self.outputopts_grid = QtGui.QGridLayout(self.outputopts)
+        self.outputdock.setWidget(self.outputopts)
+        self.add_output_input("Width",     "cm", self.set_width, self.args.width,
+                              0, QtGui.QDoubleValidator())
+        self.add_output_input("Height",    "cm", self.set_height,self.args.height,
+                              1, QtGui.QDoubleValidator())
+        self.add_output_input("Resolution","dpi",self.set_dpi,   self.args.dpi,
+                              2, QtGui.QIntValidator())
+        self.add_save_button()
+
+
+    def add_output_input(self, lab, unit, fun, init, row, validator):
+        label = QtGui.QLabel(lab, self.outputopts)
+        unit = QtGui.QLabel(unit, self.outputopts)
+        textbox = QtGui.QLineEdit(self.outputopts)
+        textbox.setText(str(init))
+        textbox.setCursorPosition(0)
+        textbox.setValidator(validator)
+        textbox.textChanged[str].connect(fun)
+        self.outputopts_grid.addWidget(label,   row, 0, 1, 1)
+        self.outputopts_grid.addWidget(textbox, row, 1, 1, 1)
+        self.outputopts_grid.addWidget(unit,    row, 2, 1, 1)
+
+
+    def add_save_button(self):
+        savebutton = QtGui.QPushButton("&Save as...")
+        savebutton.clicked.connect(self.save_as)
+        self.outputopts_grid.addWidget(savebutton, 3, 0, 1, 3)
+
+
+    def x_px_dim(self, len):
+        return len * self.logicalDpiX()
+
+
+    def y_px_dim(self, len):
+        return len * self.logicalDpiY()
+
+
+    @only_type(float)
+    def set_width(self, v):
+        logging.info("output width changed: %f", v)
+        self.args.width = v
+
+
+    @only_type(float)
+    def set_height(self, v):
+        logging.info("output height changed: %f", v)
+        self.args.height = v
+
+
+    @only_type(int)
+    def set_dpi(self, v):
+        logging.info("output resolution changed: %f", v)
+        self.args.dpi = v
+
+
+    def set_title(self, v):
+        self.args.title = str(v)
