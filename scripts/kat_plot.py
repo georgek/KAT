@@ -195,7 +195,7 @@ class KatPlotWindow(QtGui.QMainWindow):
         while True:
             redraw_event.wait()
             redraw_event.clear()
-            if end_event.isSet(): return
+            if end_event.is_set(): return
             self.figure.clear()
             self.make_figure(self.figure, self.matrix, self.args)
             self.canvas.draw()
