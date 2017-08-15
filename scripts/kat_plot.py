@@ -16,8 +16,8 @@ import matplotlib.pyplot
 
 import kat_plot_colormaps as cmaps
 
-from PyQt4 import QtCore, QtGui
-import matplotlib.backends.backend_qt4agg
+from PyQt5 import QtCore, QtGui, QtWidgets
+import matplotlib.backends.backend_qt5agg
 
 KAT_VERSION = "2.3.4"
 
@@ -162,7 +162,7 @@ def new_figure(width, height):
     return figure
 
 
-class KatPlotWindow(QtGui.QMainWindow):
+class KatPlotWindow(QtWidgets.QMainWindow):
     def __init__(self, matrix, args, make_figure_fun):
         super().__init__()
         self.matrix = matrix
@@ -172,8 +172,8 @@ class KatPlotWindow(QtGui.QMainWindow):
         self.setWindowTitle("KAT plot")
         self.setWindowIcon(QtGui.QIcon("kat_logo.png"))
 
-        self.figure = new_figure(self.args.width, self.args.height)
-        self.canvas = matplotlib.backends.backend_qt4agg.FigureCanvasQTAgg(self.figure)
+        self.figure = new_figure(args.width, args.height)
+        self.canvas = matplotlib.backends.backend_qt5agg.FigureCanvasQTAgg(self.figure)
         self.setCentralWidget(self.canvas)
 
         self.redraw_event = threading.Event()
@@ -181,7 +181,7 @@ class KatPlotWindow(QtGui.QMainWindow):
         self.drawthread = threading.Thread(target=self.async_redraw,
                                            args=(self.redraw_event, self.end_event))
 
-        self.dockwidth = 2
+        self.dockwidth = 5.5
 
         logging.info("Screen dpi: %s, %s",
                      self.logicalDpiX(),
@@ -198,11 +198,11 @@ class KatPlotWindow(QtGui.QMainWindow):
 
 
     def open_online_docs(self):
-        QtGui.QDesktopServices.openUrl(QtCore.QUrl(ONLINE_DOC_URL))
+        QtWidgets.QDesktopServices.openUrl(QtCore.QUrl(ONLINE_DOC_URL))
 
 
     def about_window(self):
-        mbox = QtGui.QMessageBox(self)
+        mbox = QtWidgets.QMessageBox(self)
         mbox.setWindowTitle("About KAT")
         mbox.setText(ABOUT)
         mbox.setIconPixmap(self.windowIcon().pixmap(100, 100))
@@ -210,7 +210,7 @@ class KatPlotWindow(QtGui.QMainWindow):
 
 
     def save_as(self):
-        filename = QtGui.QFileDialog.getSaveFileName(self)
+        filename = QtWidgets.QFileDialog.getSaveFileName(self)
         logging.info("Filename given: %s", filename)
         figure = matplotlib.pyplot.figure(figsize=(cm2inch(self.args.width),
                                                    cm2inch(self.args.height)),
@@ -239,61 +239,61 @@ class KatPlotWindow(QtGui.QMainWindow):
 which can be used to add extra menus.
         """
         file_menu = self.menuBar().addMenu("&File")
-        a = QtGui.QAction("Save as...", self)
+        a = QtWidgets.QAction("Save as...", self)
         file_menu.addAction(a)
         a.triggered.connect(self.save_as)
-        a = QtGui.QAction("&Quit", self)
+        a = QtWidgets.QAction("&Quit", self)
         file_menu.addAction(a)
         a.triggered.connect(self.close)
 
         extra_menu_fun()
 
         help_menu = self.menuBar().addMenu("&Help")
-        a = QtGui.QAction("KAT documentation", self)
+        a = QtWidgets.QAction("KAT documentation", self)
         help_menu.addAction(a)
         a.triggered.connect(self.open_online_docs)
         help_menu.addSeparator()
-        a = QtGui.QAction("About Qt", self)
+        a = QtWidgets.QAction("About Qt", self)
         help_menu.addAction(a)
-        a.triggered.connect(functools.partial(QtGui.QMessageBox.aboutQt, self))
-        a = QtGui.QAction("About KAT", self)
+        a.triggered.connect(functools.partial(QtWidgets.QMessageBox.aboutQt, self))
+        a = QtWidgets.QAction("About KAT", self)
         help_menu.addAction(a)
         a.triggered.connect(self.about_window)
 
 
     def make_axis_dock(self):
-        self.axisdock = QtGui.QDockWidget("Axis limits")
+        self.axisdock = QtWidgets.QDockWidget("Axis limits")
         self.axisdock.setAutoFillBackground(True)
-        self.axisdock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable |
-                             QtGui.QDockWidget.DockWidgetMovable)
+        self.axisdock.setFeatures(QtWidgets.QDockWidget.DockWidgetFloatable |
+                             QtWidgets.QDockWidget.DockWidgetMovable)
         palette = self.axisdock.palette()
         palette.setColor(self.axisdock.backgroundRole(), QtCore.Qt.white)
         self.axisdock.setPalette(palette)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.axisdock)
 
-        self.sliders = QtGui.QWidget()
-        self.sliders.setFixedWidth(self.x_px_dim(self.dockwidth))
-        self.sliders.setFixedHeight(self.y_px_dim(2))
-        self.sliders_grid = QtGui.QGridLayout(self.sliders)
+        self.sliders = QtWidgets.QWidget()
+        self.sliders.setFixedWidth(self.x_cm2px(self.dockwidth))
+        self.sliders.setFixedHeight(self.y_cm2px(self.args.height*2/5))
+        self.sliders_grid = QtWidgets.QGridLayout(self.sliders)
         self.axisdock.setWidget(self.sliders)
 
 
     def add_axis_slider(self, lab, fun, init, maximum, col):
         logging.debug("add_slider: %s", locals())
-        label = QtGui.QLabel(lab, self.sliders)
+        label = QtWidgets.QLabel(lab, self.sliders)
         label.setAlignment(QtCore.Qt.AlignCenter)
-        textbox = QtGui.QLineEdit(self.sliders)
+        textbox = QtWidgets.QLineEdit(self.sliders)
         textbox.setText(str(init))
         textbox.setCursorPosition(0)
         # let the user type a higher number as this will be corrected by
         # the slider
         textbox.setValidator(QtGui.QIntValidator(1, maximum*10))
-        sld = QtGui.QSlider(QtCore.Qt.Vertical, self.sliders)
+        sld = QtWidgets.QSlider(QtCore.Qt.Vertical, self.sliders)
         sld.setMinimum(1)
         sld.setMaximum(maximum)
         sld.setSliderPosition(init)
         sld.setTickInterval(maximum/10)
-        sld.setTickPosition(QtGui.QSlider.TicksRight)
+        sld.setTickPosition(QtWidgets.QSlider.TicksRight)
         sld.setFocusPolicy(QtCore.Qt.NoFocus)
         textbox.textChanged[str].connect(functools.partial(update_slider, sld))
         sld.valueChanged[int].connect(fun)
@@ -305,25 +305,25 @@ which can be used to add extra menus.
 
 
     def make_labels_dock(self):
-        self.labelsdock = QtGui.QDockWidget("Labels")
+        self.labelsdock = QtWidgets.QDockWidget("Labels")
         self.labelsdock.setAutoFillBackground(True)
-        self.labelsdock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable |
-                                    QtGui.QDockWidget.DockWidgetMovable)
+        self.labelsdock.setFeatures(QtWidgets.QDockWidget.DockWidgetFloatable |
+                                    QtWidgets.QDockWidget.DockWidgetMovable)
         palette = self.labelsdock.palette()
         palette.setColor(self.labelsdock.backgroundRole(), QtCore.Qt.white)
         self.labelsdock.setPalette(palette)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.labelsdock)
 
-        self.labelsopts = QtGui.QWidget()
-        self.labelsopts.setFixedWidth(self.x_px_dim(self.dockwidth))
-        self.labelsopts.setFixedHeight(self.y_px_dim(1.5))
-        self.labelsopts_grid = QtGui.QGridLayout(self.labelsopts)
+        self.labelsopts = QtWidgets.QWidget()
+        self.labelsopts.setFixedWidth(self.x_cm2px(self.dockwidth))
+        self.labelsopts.setFixedHeight(self.y_cm2px(self.args.height*1.5/5))
+        self.labelsopts_grid = QtWidgets.QGridLayout(self.labelsopts)
         self.labelsdock.setWidget(self.labelsopts)
 
 
     def add_labels_input(self, lab, fun, init, row):
-        label = QtGui.QLabel(lab, self.labelsopts)
-        textbox = QtGui.QLineEdit(self.labelsopts)
+        label = QtWidgets.QLabel(lab, self.labelsopts)
+        textbox = QtWidgets.QLineEdit(self.labelsopts)
         textbox.setText(str(init))
         textbox.setCursorPosition(0)
         textbox.textChanged[str].connect(fun)
@@ -333,19 +333,19 @@ which can be used to add extra menus.
 
 
     def make_output_dock(self):
-        self.outputdock = QtGui.QDockWidget("Output")
+        self.outputdock = QtWidgets.QDockWidget("Output")
         self.outputdock.setAutoFillBackground(True)
-        self.outputdock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable |
-                                    QtGui.QDockWidget.DockWidgetMovable)
+        self.outputdock.setFeatures(QtWidgets.QDockWidget.DockWidgetFloatable |
+                                    QtWidgets.QDockWidget.DockWidgetMovable)
         palette = self.outputdock.palette()
         palette.setColor(self.outputdock.backgroundRole(), QtCore.Qt.white)
         self.outputdock.setPalette(palette)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.outputdock)
 
-        self.outputopts = QtGui.QWidget()
-        self.outputopts.setFixedWidth(self.x_px_dim(self.dockwidth))
-        self.outputopts.setFixedHeight(self.y_px_dim(1.5))
-        self.outputopts_grid = QtGui.QGridLayout(self.outputopts)
+        self.outputopts = QtWidgets.QWidget()
+        self.outputopts.setFixedWidth(self.x_cm2px(self.dockwidth))
+        self.outputopts.setFixedHeight(self.y_cm2px(self.args.height*1.5/5))
+        self.outputopts_grid = QtWidgets.QGridLayout(self.outputopts)
         self.outputdock.setWidget(self.outputopts)
         self.add_output_input("Width",     "cm", self.set_width, self.args.width,
                               0, QtGui.QDoubleValidator())
@@ -357,9 +357,9 @@ which can be used to add extra menus.
 
 
     def add_output_input(self, lab, unit, fun, init, row, validator):
-        label = QtGui.QLabel(lab, self.outputopts)
-        unit = QtGui.QLabel(unit, self.outputopts)
-        textbox = QtGui.QLineEdit(self.outputopts)
+        label = QtWidgets.QLabel(lab, self.outputopts)
+        unit = QtWidgets.QLabel(unit, self.outputopts)
+        textbox = QtWidgets.QLineEdit(self.outputopts)
         textbox.setText(str(init))
         textbox.setCursorPosition(0)
         textbox.setValidator(validator)
@@ -370,17 +370,25 @@ which can be used to add extra menus.
 
 
     def add_save_button(self):
-        savebutton = QtGui.QPushButton("&Save as...")
+        savebutton = QtWidgets.QPushButton("&Save as...")
         savebutton.clicked.connect(self.save_as)
         self.outputopts_grid.addWidget(savebutton, 3, 0, 1, 3)
 
 
-    def x_px_dim(self, len):
-        return len * self.logicalDpiX()
+    def x_inch2px(self, inches):
+        return inches * self.logicalDpiX()
 
 
-    def y_px_dim(self, len):
-        return len * self.logicalDpiY()
+    def y_inch2px(self, inches):
+        return inches * self.logicalDpiY()
+
+
+    def x_cm2px(self, cms):
+        return self.x_inch2px(cm2inch(cms))
+
+
+    def y_cm2px(self, cms):
+        return self.y_inch2px(cm2inch(cms))
 
 
     @only_type(float)

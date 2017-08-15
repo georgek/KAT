@@ -16,8 +16,8 @@ import matplotlib.pyplot
 import kat_plot as k
 import kat_plot_colormaps as cmaps
 
-from PyQt4 import QtCore, QtGui
-import matplotlib.backends.backend_qt4agg
+from PyQt5 import QtCore, QtWidgets
+import matplotlib.backends.backend_qt5agg
 
 class KatDensityWindow(k.KatPlotWindow):
     def __init__(self, matrix, args, make_figure_fun):
@@ -26,9 +26,9 @@ class KatDensityWindow(k.KatPlotWindow):
         def kat_density_plot_menus():
             options_menu = self.menuBar().addMenu("&Options")
             colour_menu = options_menu.addMenu("Colour map")
-            colour_group = QtGui.QActionGroup(self, exclusive=True)
+            colour_group = QtWidgets.QActionGroup(self, exclusive=True)
             for cmap in cmaps.__all__:
-                a = colour_group.addAction(QtGui.QAction(cmap.capitalize(), self,
+                a = colour_group.addAction(QtWidgets.QAction(cmap.capitalize(), self,
                                                          checkable=True))
                 colour_menu.addAction(a)
                 a.triggered.connect(functools.partial(self.set_cmap, cmap))
@@ -36,9 +36,9 @@ class KatDensityWindow(k.KatPlotWindow):
                 if cmap == args.cmap:
                     a.setChecked(True)
             contour_menu = options_menu.addMenu("Contours")
-            contour_group = QtGui.QActionGroup(self, exclusive=True)
+            contour_group = QtWidgets.QActionGroup(self, exclusive=True)
             for contour_option in k.CONTOUR_OPTIONS:
-                a = contour_group.addAction(QtGui.QAction(contour_option.capitalize(),
+                a = contour_group.addAction(QtWidgets.QAction(contour_option.capitalize(),
                                                           self, checkable=True))
                 contour_menu.addAction(a)
                 a.triggered.connect(functools.partial(self.set_contour_option,
@@ -201,7 +201,7 @@ def make_figure(figure, matrix, args):
     ax.set_title(k.wrap(args.title))
     ax.set_xlabel(k.wrap(args.x_label))
     ax.set_ylabel(k.wrap(args.y_label))
-    ax.grid(True, color="white", alpha=0.2)
+    ax.grid(True, color="white", alpha=0.2, linestyle="dashed")
 
 
 def main(args):
@@ -261,7 +261,7 @@ def main(args):
         make_figure(figure, matrix, args)
         figure.savefig(k.correct_filename(output_name), dpi=args.dpi)
     else:
-        app = QtGui.QApplication(sys.argv)
+        app = QtWidgets.QApplication(sys.argv)
         main = KatDensityWindow(matrix, args, make_figure)
         main.show()
         sys.exit(app.exec_())
