@@ -13,11 +13,11 @@ import scipy.ndimage as ndimage
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot
-import matplotlib.backends.backend_qt4agg
 
 import kat_plot_colormaps as cmaps
 
 from PyQt4 import QtCore, QtGui
+import matplotlib.backends.backend_qt4agg
 
 KAT_VERSION = "2.3.4"
 
@@ -42,6 +42,39 @@ href="http://dx.doi.org/10.1093/bioinformatics/btw663">10.1093/bioinformatics/bt
 ONLINE_DOC_URL = "http://kat.readthedocs.io/en/latest/"
 
 CONTOUR_OPTIONS = ["none", "normal", "smooth"]
+
+
+def get_common_argparser():
+    parser = argparse.ArgumentParser(add_help=False)
+    input_group = parser.add_argument_group("Input options")
+    output_group = parser.add_argument_group("Output options")
+    output_group.add_argument("-o", "--output", type=str,
+                              help="The path to the output file.")
+    output_group.add_argument("-p", "--output_type", type=str,
+                              help="The plot file type to create (default is " \
+                              "based on given output name).")
+    output_group.add_argument("-w", "--width", type=int, default=20,
+                              help="Width of canvas (cm)")
+    output_group.add_argument("-l", "--height", type=int, default=15,
+                              help="Height of canvas (cm)")
+    output_group.add_argument("-r", "--resolution", type=int, default=300,
+                              help="Resolution in dots per inch (dpi) of output graphic.")
+    plot_group = parser.add_argument_group("Plot options")
+    plot_group.add_argument("-t", "--title", type=str,
+                            help="Title for plot")
+    misc_group = parser.add_argument_group("Miscellaneous options")
+    misc_group.add_argument("-v", "--verbose", dest="verbose",
+                            action="store_true",
+                            help="Print extra information")
+    misc_group.set_defaults(verbose=False)
+    misc_group.add_argument("--debug", dest="debug",
+                            action="store_true",
+                            help=argparse.SUPPRESS)
+    misc_group.set_defaults(debug=False)
+    misc_group.add_argument("-h", "--help", action="help",
+                            help="show this help message and exit")
+
+    return parser,input_group,output_group,plot_group,misc_group
 
 
 def only_type(typ):
@@ -184,7 +217,7 @@ class KatPlotWindow(QtGui.QMainWindow):
                                           facecolor="white",
                                           tight_layout=True)
         self.make_figure(figure, self.matrix, self.args)
-        figure.savefig(correct_filename(filename), dpi=self.args.dpi)
+        figure.savefig(correct_filename(filename), dpi=self.args.resolution)
 
 
     def redraw(self):
@@ -318,7 +351,7 @@ which can be used to add extra menus.
                               0, QtGui.QDoubleValidator())
         self.add_output_input("Height",    "cm", self.set_height,self.args.height,
                               1, QtGui.QDoubleValidator())
-        self.add_output_input("Resolution","dpi",self.set_dpi,   self.args.dpi,
+        self.add_output_input("Resolution","dpi",self.set_dpi,   self.args.resolution,
                               2, QtGui.QIntValidator())
         self.add_save_button()
 
@@ -365,7 +398,7 @@ which can be used to add extra menus.
     @only_type(int)
     def set_dpi(self, v):
         logging.info("output resolution changed: %f", v)
-        self.args.dpi = v
+        self.args.resolution = v
 
 
     def set_title(self, v):

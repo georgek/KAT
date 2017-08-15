@@ -12,12 +12,12 @@ import scipy.ndimage as ndimage
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot
-import matplotlib.backends.backend_qt4agg
 
 import kat_plot as k
 import kat_plot_colormaps as cmaps
 
 from PyQt4 import QtCore, QtGui
+import matplotlib.backends.backend_qt4agg
 
 class KatDensityWindow(k.KatPlotWindow):
     def __init__(self, matrix, args, make_figure_fun):
@@ -110,7 +110,35 @@ class KatDensityWindow(k.KatPlotWindow):
 
 
 def get_args():
+    parent_parser,input_group,output_group,plot_group,misc_group = k.get_common_argparser()
+
+    input_group.add_argument("matrix_file", type=str,
+                             help="The input matrix file from KAT")
+    plot_group.add_argument("-a", "--x_label", type=str,
+                            help="Label for x-axis")
+    plot_group.add_argument("-b", "--y_label", type=str,
+                            help="Label for y-axis")
+    plot_group.add_argument("-c", "--z_label", type=str,
+                            help="Label for z-axis")
+    plot_group.add_argument("-x", "--x_max", type=int,
+                            help="Maximum value for x-axis")
+    plot_group.add_argument("-y", "--y_max", type=int,
+                            help="Maximum value for y-axis")
+    plot_group.add_argument("-z", "--z_max", type=int,
+                            help="Maximum value for z-axis")
+    plot_group.add_argument("--contours", choices=k.CONTOUR_OPTIONS,
+                            default="normal")
+    plot_group.add_argument("--cmap", choices=cmaps.__all__,
+                            default="viridis",
+                            help="Colour map (theme)")
+    misc_group.add_argument("--not_rasterised", dest="rasterised",
+                            action="store_false",
+                            help="Don't rasterise graphics (slow).")
+    misc_group.set_defaults(rasterised=True)
+
     parser = argparse.ArgumentParser(
+        add_help=False,
+        parents=[parent_parser],
         description="""Create K-mer Density Plots.
 
     Creates a scatter plot, where the density or "heat" at each point
@@ -119,53 +147,6 @@ def get_args():
     multiplicities from two K-mer hashes produced by different NGS reads, or
     to visualise the GC vs K-mer multiplicity matrices produced by the "kat
     gcp" tool.""")
-
-    parser.add_argument("matrix_file", type=str,
-                        help="The input matrix file from KAT")
-
-    parser.add_argument("-o", "--output", type=str,
-                        help="The path to the output file.")
-    parser.add_argument("-p", "--output_type", type=str,
-                        help="The plot file type to create (default is " \
-                        "based on given output name).")
-    parser.add_argument("-t", "--title", type=str,
-                        help="Title for plot")
-    parser.add_argument("-a", "--x_label", type=str,
-                        help="Label for x-axis")
-    parser.add_argument("-b", "--y_label", type=str,
-                        help="Label for y-axis")
-    parser.add_argument("-c", "--z_label", type=str,
-                        help="Label for z-axis")
-    parser.add_argument("-x", "--x_max", type=int,
-                        help="Maximum value for x-axis")
-    parser.add_argument("-y", "--y_max", type=int,
-                        help="Maximum value for y-axis")
-    parser.add_argument("-z", "--z_max", type=int,
-                        help="Maximum value for z-axis")
-    parser.add_argument("-w", "--width", type=int, default=20,
-                        help="Width of canvas (cm)")
-    parser.add_argument("-l", "--height", type=int, default=15,
-                        help="Height of canvas (cm)")
-    parser.add_argument("--contours", choices=k.CONTOUR_OPTIONS,
-                        default="normal")
-    parser.add_argument("--cmap", choices=cmaps.__all__,
-                        default="viridis",
-                        help="Colour map (theme)")
-    parser.add_argument("--not_rasterised", dest="rasterised",
-                        action="store_false",
-                        help="Don't rasterise graphics (slower).")
-    parser.add_argument("--dpi", type=int, default=300,
-                        help="Resolution in dots per inch of output graphic.")
-    parser.set_defaults(rasterised=True)
-    parser.add_argument("-v", "--verbose", dest="verbose",
-                        action="store_true",
-                        help="Print extra information")
-    parser.set_defaults(verbose=False)
-    parser.add_argument("--debug", dest="debug",
-                        action="store_true",
-                        help=argparse.SUPPRESS)
-    parser.set_defaults(debug=False)
-
 
     return parser.parse_args()
 
