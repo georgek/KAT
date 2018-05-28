@@ -2,7 +2,6 @@
 
 import sys
 import argparse
-import threading
 import logging
 import functools
 
@@ -16,8 +15,9 @@ import matplotlib.pyplot
 import kat_plot as k
 import kat_plot_colormaps as cmaps
 
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtWidgets
 import matplotlib.backends.backend_qt5agg
+
 
 class KatDensityWindow(k.KatPlotWindow):
     def __init__(self, matrix, args, make_figure_fun):
@@ -28,8 +28,10 @@ class KatDensityWindow(k.KatPlotWindow):
             colour_menu = options_menu.addMenu("Colour map")
             colour_group = QtWidgets.QActionGroup(self, exclusive=True)
             for cmap in cmaps.__all__:
-                a = colour_group.addAction(QtWidgets.QAction(cmap.capitalize(), self,
-                                                         checkable=True))
+                a = colour_group.addAction(QtWidgets.QAction(
+                    cmap.capitalize(),
+                    self,
+                    checkable=True))
                 colour_menu.addAction(a)
                 a.triggered.connect(functools.partial(self.set_cmap, cmap))
                 a.triggered.connect(self.redraw)
@@ -38,8 +40,9 @@ class KatDensityWindow(k.KatPlotWindow):
             contour_menu = options_menu.addMenu("Contours")
             contour_group = QtWidgets.QActionGroup(self, exclusive=True)
             for contour_option in k.CONTOUR_OPTIONS:
-                a = contour_group.addAction(QtWidgets.QAction(contour_option.capitalize(),
-                                                          self, checkable=True))
+                a = contour_group.addAction(QtWidgets.QAction(
+                    contour_option.capitalize(),
+                    self, checkable=True))
                 contour_menu.addAction(a)
                 a.triggered.connect(functools.partial(self.set_contour_option,
                                                       contour_option))
@@ -71,38 +74,30 @@ class KatDensityWindow(k.KatPlotWindow):
 
         self.make_output_dock()
 
-
     def set_x_label(self, v):
         self.args.x_label = str(v)
-
 
     def set_y_label(self, v):
         self.args.y_label = str(v)
 
-
     def set_z_label(self, v):
         self.args.z_label = str(v)
-
 
     @k.only_type(int)
     def set_x_max(self, v):
         self.args.x_max = v
 
-
     @k.only_type(int)
     def set_y_max(self, v):
         self.args.y_max = v
-
 
     @k.only_type(int)
     def set_z_max(self, v):
         self.args.z_max = v
 
-
     def set_cmap(self, cmap):
         if cmap in cmaps.__all__:
             self.args.cmap = cmap
-
 
     def set_contour_option(self, contour_option):
         if contour_option in k.CONTOUR_OPTIONS:
@@ -110,7 +105,11 @@ class KatDensityWindow(k.KatPlotWindow):
 
 
 def get_args():
-    parent_parser,input_group,output_group,plot_group,misc_group = k.get_common_argparser()
+    (parent_parser,
+     input_group,
+     output_group,
+     plot_group,
+     misc_group) = k.get_common_argparser()
 
     input_group.add_argument("matrix_file", type=str,
                              help="The input matrix file from KAT")
@@ -160,7 +159,7 @@ def find_peaks(matrix):
     # ignore peaks at 1
     peakx = peakx[peakx != 1]
     peaky = peaky[peaky != 1]
-    peakz = matrix[peaky,:][:,peakx]
+    peakz = matrix[peaky, :][:, peakx]
 
     xmax = len(xsums)
     ymax = len(ysums)
@@ -175,7 +174,7 @@ def find_peaks(matrix):
 
     zmax = int(np.max(peakz) * 1.1)
 
-    return xmax,ymax,zmax
+    return xmax, ymax, zmax
 
 
 def make_figure(figure, matrix, args):
@@ -186,7 +185,7 @@ def make_figure(figure, matrix, args):
     pcol = ax.pcolormesh(matrix, vmin=0, vmax=args.z_max,
                          cmap=cmaps.cmaps[args.cmap],
                          rasterized=args.rasterised)
-    ax.axis([0,args.x_max,0,args.y_max])
+    ax.axis([0, args.x_max, 0, args.y_max])
     cbar = figure.colorbar(pcol, label=k.wrap(args.z_label))
     cbar.solids.set_rasterized(args.rasterised)
     if args.z_max > 0:
@@ -219,7 +218,7 @@ def main(args):
                  matrix.shape[0], matrix.shape[1])
 
     if args.x_max is None or args.y_max is None or args.z_max is None:
-        xmax,ymax,zmax = find_peaks(matrix)
+        xmax, ymax, zmax = find_peaks(matrix)
         logging.info("Automatically detected axis limits:")
         logging.info("xmax: %d", xmax)
         logging.info("ymax: %d", ymax)

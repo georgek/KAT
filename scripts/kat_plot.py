@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import sys
 import argparse
 import threading
 import logging
@@ -8,13 +7,10 @@ import functools
 import textwrap
 
 import numpy as np
-import scipy.ndimage as ndimage
 
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot
-
-import kat_plot_colormaps as cmaps
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 import matplotlib.backends.backend_qt5agg
@@ -30,7 +26,8 @@ ABOUT = """<h3>About KAT</h3>
 
 <p>KAT is licensed under the GNU General Public Licence v3.</p>
 
-<p>If you use KAT in your work and wish to cite us please use the following citation:</p>
+<p>If you use KAT in your work and wish to cite us please use the following
+citation:</p>
 
 <p>Daniel Mapleson, Gonzalo Garcia Accinelli, George Kettleborough, Jonathan
 Wright, and Bernardo J. Clavijo.  <b>KAT: A K-mer Analysis Toolkit to quality
@@ -51,14 +48,15 @@ def get_common_argparser():
     output_group.add_argument("-o", "--output", type=str,
                               help="The path to the output file.")
     output_group.add_argument("-p", "--output_type", type=str,
-                              help="The plot file type to create (default is " \
+                              help="The plot file type to create (default is "
                               "based on given output name).")
     output_group.add_argument("-w", "--width", type=int, default=20,
                               help="Width of canvas (cm)")
     output_group.add_argument("-l", "--height", type=int, default=15,
                               help="Height of canvas (cm)")
     output_group.add_argument("-r", "--resolution", type=int, default=300,
-                              help="Resolution in dots per inch (dpi) of output graphic.")
+                              help="Resolution in dots per inch (dpi) of "
+                              "output graphic.")
     plot_group = parser.add_argument_group("Plot options")
     plot_group.add_argument("-t", "--title", type=str,
                             help="Title for plot")
@@ -74,7 +72,7 @@ def get_common_argparser():
     misc_group.add_argument("-h", "--help", action="help",
                             help="show this help message and exit")
 
-    return parser,input_group,output_group,plot_group,misc_group
+    return parser, input_group, output_group, plot_group, misc_group
 
 
 def only_type(typ):
@@ -173,13 +171,15 @@ class KatPlotWindow(QtWidgets.QMainWindow):
         self.setWindowIcon(QtGui.QIcon("kat_logo.png"))
 
         self.figure = new_figure(args.width, args.height)
-        self.canvas = matplotlib.backends.backend_qt5agg.FigureCanvasQTAgg(self.figure)
+        self.canvas = matplotlib.backends.backend_qt5agg.FigureCanvasQTAgg(
+            self.figure)
         self.setCentralWidget(self.canvas)
 
         self.redraw_event = threading.Event()
         self.end_event = threading.Event()
         self.drawthread = threading.Thread(target=self.async_redraw,
-                                           args=(self.redraw_event, self.end_event))
+                                           args=(self.redraw_event,
+                                                 self.end_event))
 
         self.dockwidth = 5.5
 
@@ -190,16 +190,13 @@ class KatPlotWindow(QtWidgets.QMainWindow):
         self.drawthread.start()
         self.redraw()
 
-
     def closeEvent(self, event):
         self.end_event.set()
         self.redraw()
         super().closeEvent(event)
 
-
     def open_online_docs(self):
         QtWidgets.QDesktopServices.openUrl(QtCore.QUrl(ONLINE_DOC_URL))
-
 
     def about_window(self):
         mbox = QtWidgets.QMessageBox(self)
@@ -207,7 +204,6 @@ class KatPlotWindow(QtWidgets.QMainWindow):
         mbox.setText(ABOUT)
         mbox.setIconPixmap(self.windowIcon().pixmap(100, 100))
         mbox.exec_()
-
 
     def save_as(self):
         filename = QtWidgets.QFileDialog.getSaveFileName(self)
@@ -219,10 +215,8 @@ class KatPlotWindow(QtWidgets.QMainWindow):
         self.make_figure(figure, self.matrix, self.args)
         figure.savefig(correct_filename(filename), dpi=self.args.resolution)
 
-
     def redraw(self):
         self.redraw_event.set()
-
 
     def async_redraw(self, redraw_event, end_event):
         while True:
@@ -232,7 +226,6 @@ class KatPlotWindow(QtWidgets.QMainWindow):
             self.figure.clear()
             self.make_figure(self.figure, self.matrix, self.args)
             self.canvas.draw()
-
 
     def make_menus(self, extra_menu_fun):
         """Makes the standard menus and calls extra_menu_fun before the help menu
@@ -260,7 +253,6 @@ which can be used to add extra menus.
         help_menu.addAction(a)
         a.triggered.connect(self.about_window)
 
-
     def make_axis_dock(self):
         self.axisdock = QtWidgets.QDockWidget("Axis limits")
         self.axisdock.setAutoFillBackground(True)
@@ -276,7 +268,6 @@ which can be used to add extra menus.
         self.sliders.setFixedHeight(self.y_cm2px(self.args.height*2/5))
         self.sliders_grid = QtWidgets.QGridLayout(self.sliders)
         self.axisdock.setWidget(self.sliders)
-
 
     def add_axis_slider(self, lab, fun, init, maximum, col):
         logging.debug("add_slider: %s", locals())
@@ -303,7 +294,6 @@ which can be used to add extra menus.
         self.sliders_grid.addWidget(textbox, 1, col)
         self.sliders_grid.addWidget(sld,     2, col)
 
-
     def make_labels_dock(self):
         self.labelsdock = QtWidgets.QDockWidget("Labels")
         self.labelsdock.setAutoFillBackground(True)
@@ -320,7 +310,6 @@ which can be used to add extra menus.
         self.labelsopts_grid = QtWidgets.QGridLayout(self.labelsopts)
         self.labelsdock.setWidget(self.labelsopts)
 
-
     def add_labels_input(self, lab, fun, init, row):
         label = QtWidgets.QLabel(lab, self.labelsopts)
         textbox = QtWidgets.QLineEdit(self.labelsopts)
@@ -330,7 +319,6 @@ which can be used to add extra menus.
         textbox.textChanged.connect(self.redraw)
         self.labelsopts_grid.addWidget(label,   row, 0, 1, 1)
         self.labelsopts_grid.addWidget(textbox, row, 1, 1, 1)
-
 
     def make_output_dock(self):
         self.outputdock = QtWidgets.QDockWidget("Output")
@@ -351,10 +339,9 @@ which can be used to add extra menus.
                               0, QtGui.QDoubleValidator())
         self.add_output_input("Height",    "cm", self.set_height,self.args.height,
                               1, QtGui.QDoubleValidator())
-        self.add_output_input("Resolution","dpi",self.set_dpi,   self.args.resolution,
+        self.add_output_input("Resolution", "dpi", self.set_dpi,   self.args.resolution,
                               2, QtGui.QIntValidator())
         self.add_save_button()
-
 
     def add_output_input(self, lab, unit, fun, init, row, validator):
         label = QtWidgets.QLabel(lab, self.outputopts)
@@ -368,46 +355,37 @@ which can be used to add extra menus.
         self.outputopts_grid.addWidget(textbox, row, 1, 1, 1)
         self.outputopts_grid.addWidget(unit,    row, 2, 1, 1)
 
-
     def add_save_button(self):
         savebutton = QtWidgets.QPushButton("&Save as...")
         savebutton.clicked.connect(self.save_as)
         self.outputopts_grid.addWidget(savebutton, 3, 0, 1, 3)
 
-
     def x_inch2px(self, inches):
         return inches * self.logicalDpiX()
-
 
     def y_inch2px(self, inches):
         return inches * self.logicalDpiY()
 
-
     def x_cm2px(self, cms):
         return self.x_inch2px(cm2inch(cms))
 
-
     def y_cm2px(self, cms):
         return self.y_inch2px(cm2inch(cms))
-
 
     @only_type(float)
     def set_width(self, v):
         logging.info("output width changed: %f", v)
         self.args.width = v
 
-
     @only_type(float)
     def set_height(self, v):
         logging.info("output height changed: %f", v)
         self.args.height = v
 
-
     @only_type(int)
     def set_dpi(self, v):
         logging.info("output resolution changed: %f", v)
         self.args.resolution = v
-
 
     def set_title(self, v):
         self.args.title = str(v)
