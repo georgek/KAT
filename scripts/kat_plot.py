@@ -10,10 +10,12 @@ import numpy as np
 
 import matplotlib
 matplotlib.use('Agg')
-import matplotlib.pyplot
+import matplotlib.pyplot        # noqa
 
-from PyQt5 import QtCore, QtGui, QtWidgets
-import matplotlib.backends.backend_qt5agg
+from PyQt5 import QtCore, QtGui, QtWidgets  # noqa
+import matplotlib.backends.backend_qt5agg   # noqa
+
+LOGGER = logging.getLogger(__name__)
 
 KAT_VERSION = "2.3.4"
 
@@ -163,6 +165,16 @@ def new_figure(width, height):
 class KatPlotWindow(QtWidgets.QMainWindow):
     def __init__(self, matrix, args, make_figure_fun):
         super().__init__()
+        # hints to the window manager that this should be treated like a
+        # dialog. Especially useful on tiling WMs because it doesn't like to
+        # be a weird size
+        self.setWindowFlags(
+            QtCore.Qt.Dialog
+            | QtCore.Qt.CustomizeWindowHint
+            | QtCore.Qt.WindowTitleHint
+            | QtCore.Qt.WindowCloseButtonHint
+        )
+
         self.matrix = matrix
         self.args = args
         self.make_figure = make_figure_fun
@@ -183,9 +195,9 @@ class KatPlotWindow(QtWidgets.QMainWindow):
 
         self.dockwidth = 5.5
 
-        logging.info("Screen dpi: %s, %s",
-                     self.logicalDpiX(),
-                     self.logicalDpiY())
+        LOGGER.info("Screen dpi: %s, %s",
+                    self.logicalDpiX(),
+                    self.logicalDpiY())
 
         self.drawthread.start()
         self.redraw()
@@ -206,14 +218,22 @@ class KatPlotWindow(QtWidgets.QMainWindow):
         mbox.exec_()
 
     def save_as(self):
-        filename = QtWidgets.QFileDialog.getSaveFileName(self)
-        logging.info("Filename given: %s", filename)
-        figure = matplotlib.pyplot.figure(figsize=(cm2inch(self.args.width),
-                                                   cm2inch(self.args.height)),
-                                          facecolor="white",
-                                          tight_layout=True)
-        self.make_figure(figure, self.matrix, self.args)
-        figure.savefig(correct_filename(filename), dpi=self.args.resolution)
+        filename, _ = QtWidgets.QFileDialog.getSaveFileName(self)
+        if filename:
+            LOGGER.info("Filename given: %r", filename)
+            figure = matplotlib.pyplot.figure(
+                figsize=(
+                    cm2inch(self.args.width),
+                    cm2inch(self.args.height),
+                ),
+                facecolor="white",
+                tight_layout=True,
+            )
+            self.make_figure(figure, self.matrix, self.args)
+            figure.savefig(
+                correct_filename(filename),
+                dpi=self.args.resolution,
+            )
 
     def redraw(self):
         self.redraw_event.set()
@@ -222,7 +242,8 @@ class KatPlotWindow(QtWidgets.QMainWindow):
         while True:
             redraw_event.wait()
             redraw_event.clear()
-            if end_event.is_set(): return
+            if end_event.is_set():
+                return
             self.figure.clear()
             self.make_figure(self.figure, self.matrix, self.args)
             self.canvas.draw()
@@ -248,7 +269,10 @@ which can be used to add extra menus.
         help_menu.addSeparator()
         a = QtWidgets.QAction("About Qt", self)
         help_menu.addAction(a)
-        a.triggered.connect(functools.partial(QtWidgets.QMessageBox.aboutQt, self))
+        a.triggered.connect(functools.partial(
+            QtWidgets.QMessageBox.aboutQt,
+            self
+        ))
         a = QtWidgets.QAction("About KAT", self)
         help_menu.addAction(a)
         a.triggered.connect(self.about_window)
@@ -257,7 +281,7 @@ which can be used to add extra menus.
         self.axisdock = QtWidgets.QDockWidget("Axis limits")
         self.axisdock.setAutoFillBackground(True)
         self.axisdock.setFeatures(QtWidgets.QDockWidget.DockWidgetFloatable |
-                             QtWidgets.QDockWidget.DockWidgetMovable)
+                                  QtWidgets.QDockWidget.DockWidgetMovable)
         palette = self.axisdock.palette()
         palette.setColor(self.axisdock.backgroundRole(), QtCore.Qt.white)
         self.axisdock.setPalette(palette)
@@ -270,7 +294,7 @@ which can be used to add extra menus.
         self.axisdock.setWidget(self.sliders)
 
     def add_axis_slider(self, lab, fun, init, maximum, col):
-        logging.debug("add_slider: %s", locals())
+        LOGGER.debug("add_slider: %s", locals())
         label = QtWidgets.QLabel(lab, self.sliders)
         label.setAlignment(QtCore.Qt.AlignCenter)
         textbox = QtWidgets.QLineEdit(self.sliders)
@@ -288,7 +312,10 @@ which can be used to add extra menus.
         sld.setFocusPolicy(QtCore.Qt.NoFocus)
         textbox.textChanged[str].connect(functools.partial(update_slider, sld))
         sld.valueChanged[int].connect(fun)
-        sld.valueChanged[int].connect(functools.partial(update_text_box, textbox))
+        sld.valueChanged[int].connect(functools.partial(
+            update_text_box,
+            textbox
+        ))
         sld.valueChanged.connect(self.redraw)
         self.sliders_grid.addWidget(label,   0, col)
         self.sliders_grid.addWidget(textbox, 1, col)
@@ -335,12 +362,30 @@ which can be used to add extra menus.
         self.outputopts.setFixedHeight(self.y_cm2px(self.args.height*1.5/5))
         self.outputopts_grid = QtWidgets.QGridLayout(self.outputopts)
         self.outputdock.setWidget(self.outputopts)
-        self.add_output_input("Width",     "cm", self.set_width, self.args.width,
-                              0, QtGui.QDoubleValidator())
-        self.add_output_input("Height",    "cm", self.set_height,self.args.height,
-                              1, QtGui.QDoubleValidator())
-        self.add_output_input("Resolution", "dpi", self.set_dpi,   self.args.resolution,
-                              2, QtGui.QIntValidator())
+        self.add_output_input(
+            "Width",
+            "cm",
+            self.set_width,
+            self.args.width,
+            0,
+            QtGui.QDoubleValidator()
+        )
+        self.add_output_input(
+            "Height",
+            "cm",
+            self.set_height,
+            self.args.height,
+            1,
+            QtGui.QDoubleValidator()
+        )
+        self.add_output_input(
+            "Resolution",
+            "dpi",
+            self.set_dpi,
+            self.args.resolution,
+            2,
+            QtGui.QIntValidator()
+        )
         self.add_save_button()
 
     def add_output_input(self, lab, unit, fun, init, row, validator):
@@ -374,17 +419,17 @@ which can be used to add extra menus.
 
     @only_type(float)
     def set_width(self, v):
-        logging.info("output width changed: %f", v)
+        LOGGER.info("output width changed: %f", v)
         self.args.width = v
 
     @only_type(float)
     def set_height(self, v):
-        logging.info("output height changed: %f", v)
+        LOGGER.info("output height changed: %f", v)
         self.args.height = v
 
     @only_type(int)
     def set_dpi(self, v):
-        logging.info("output resolution changed: %f", v)
+        LOGGER.info("output resolution changed: %f", v)
         self.args.resolution = v
 
     def set_title(self, v):

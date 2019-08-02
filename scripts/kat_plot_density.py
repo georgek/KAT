@@ -10,13 +10,13 @@ import scipy.ndimage as ndimage
 
 import matplotlib
 matplotlib.use('Agg')
-import matplotlib.pyplot
+import matplotlib.pyplot        # noqa
 
-import kat_plot as k
-import kat_plot_colormaps as cmaps
+from PyQt5 import QtWidgets     # noqa
+import matplotlib.backends.backend_qt5agg  # noqa
 
-from PyQt5 import QtWidgets
-import matplotlib.backends.backend_qt5agg
+import kat_plot as k            # noqa
+import kat_plot_colormaps as cmaps  # noqa
 
 
 class KatDensityWindow(k.KatPlotWindow):
